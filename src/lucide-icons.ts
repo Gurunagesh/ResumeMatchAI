@@ -12,4 +12,8 @@ export {
     List,
     Rocket,
     ArrowRight,
+    ShieldCheck,
+    CheckCircle2,
+    BrainCircuit,
+    ClipboardList,
 } from 'lucide-react';

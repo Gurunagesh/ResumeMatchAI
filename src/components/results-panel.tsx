@@ -24,6 +24,9 @@ import {
   User,
   TestTube2,
   ArrowRight,
+  CheckCircle2,
+  BrainCircuit,
+  ClipboardList
 } from 'lucide-react';
 import { MatchScoreChart } from './match-score-chart';
 import { Spinner } from './ui/spinner';
@@ -46,23 +49,46 @@ type ResultsPanelProps = {
 };
 
 const LoadingIndicator = ({ text }: { text: string }) => (
-  <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center h-full">
-    <Spinner className="h-8 w-8 text-muted-foreground" />
-    <p className="text-muted-foreground">{text}</p>
+  <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center h-full min-h-[400px]">
+    <Spinner className="h-8 w-8 text-primary" />
+    <p className="text-muted-foreground font-medium">{text}</p>
   </div>
 );
 
 const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center h-full">
-    <Sparkles className="h-10 w-10 text-muted-foreground" />
-    <h3 className="font-headline text-lg font-semibold">
-      Your AI Analysis Will Appear Here
-    </h3>
-    <p className="text-sm text-muted-foreground">
-      Enter a job description and your resume, then click "Run AI Analysis".
-    </p>
+  <div className="flex flex-col items-center justify-center gap-6 rounded-lg border-2 border-dashed p-8 text-center min-h-[400px]">
+    <div className='p-4 bg-primary/10 rounded-full'>
+      <BrainCircuit className="h-10 w-10 text-primary" />
+    </div>
+    <div className='space-y-2'>
+        <h3 className="font-headline text-xl font-semibold text-gray-800">
+          Your AI Analysis Awaits
+        </h3>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+          After you provide a job description and resume, your results will appear here. You'll get insights on:
+        </p>
+    </div>
+    <div className='grid grid-cols-2 gap-x-8 gap-y-4 text-left text-sm text-muted-foreground'>
+        <div className="flex items-center gap-3">
+            <Gauge className="h-5 w-5 text-primary/80" />
+            <span>Job-Resume Match Score</span>
+        </div>
+        <div className="flex items-center gap-3">
+            <Target className="h-5 w-5 text-primary/80" />
+            <span>Skill Gap Analysis</span>
+        </div>
+        <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-primary/80" />
+            <span>ATS Compatibility Check</span>
+        </div>
+        <div className="flex items-center gap-3">
+            <Lightbulb className="h-5 w-5 text-primary/80" />
+            <span>AI Optimization Ideas</span>
+        </div>
+    </div>
   </div>
 );
+
 
 const SimulationPanel = ({
   originalResumeText,
@@ -85,9 +111,10 @@ const SimulationPanel = ({
   
   if (originalMatchScore === undefined) {
     return (
-       <p className="text-center text-sm text-muted-foreground p-8">
-        Run an analysis first to unlock the "What-If" simulator.
-      </p>
+       <div className="text-center text-sm text-muted-foreground p-8 border-2 border-dashed rounded-lg min-h-[400px] flex flex-col justify-center items-center gap-4">
+          <TestTube2 className="h-8 w-8 text-muted-foreground" />
+          <p className="max-w-xs">Run an analysis with pasted resume text first to unlock the "What-If" simulator.</p>
+       </div>
     )
   }
 
@@ -113,7 +140,7 @@ const SimulationPanel = ({
       {loading && <LoadingIndicator text="Simulating new score..." />}
       
       {!loading && simulationResult && (
-        <Card>
+        <Card className='bg-green-50/50 border-green-200'>
           <CardHeader>
             <CardTitle className="font-headline text-md">Simulation Results</CardTitle>
           </CardHeader>
@@ -122,9 +149,9 @@ const SimulationPanel = ({
                 <p className="font-headline text-sm text-muted-foreground">Original Score</p>
                 <p className="text-4xl font-bold">{originalMatchScore}%</p>
              </div>
-             <ArrowRight className="h-8 w-8 text-primary" />
+             <ArrowRight className="h-8 w-8 text-green-500" />
              <div className="text-center">
-                <p className="font-headline text-sm text-muted-foreground">New Score</p>
+                <p className="font-headline text-sm text-primary">New Score</p>
                 <p className="text-4xl font-bold text-primary">{simulationResult.matchScore}%</p>
              </div>
           </CardContent>
@@ -154,76 +181,93 @@ export function ResultsPanel({
 
   if (isInitialState && !isLoading) {
     return (
-      <Card className="shadow-lg h-full">
+      <Card className="shadow-sm h-full bg-white">
         <CardContent className="p-4 h-full">
           <EmptyState />
         </CardContent>
       </Card>
     );
   }
+  
+  const getLoadingText = () => {
+    if (loading.isMatching) return "Calculating your match score...";
+    if (loading.isAnalyzingGap) return "Analyzing skill gaps...";
+    if (loading.isSuggesting) return "Generating AI optimization ideas...";
+    if (loading.isParsing) return "Scanning your resume file for ATS issues...";
+    return "Loading analysis...";
+  }
+
+  if (isLoading) {
+    return (
+       <Card className="shadow-sm h-full">
+        <CardContent className="p-4 h-full">
+            <LoadingIndicator text={getLoadingText()} />
+        </CardContent>
+      </Card>
+    )
+  }
+
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-sm bg-white">
       <CardHeader>
-        <CardTitle className="font-headline text-xl">
+        <CardTitle className="font-headline text-xl tracking-tight">
           Analysis Results
         </CardTitle>
       </CardHeader>
       <CardContent>
-      <TooltipProvider>
-        <Tabs defaultValue="match-score">
+      <TooltipProvider delayDuration={0}>
+        <Tabs defaultValue="match-score" className="min-h-[400px]">
           <TabsList className="grid w-full grid-cols-5">
             <Tooltip>
                 <TooltipTrigger asChild>
                     <TabsTrigger value="match-score">
-                        <Gauge className="mr-2 h-4 w-4" />
+                        <Gauge className="mr-1.5 h-4 w-4" />
                         Match Score
                     </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent>How well your resume matches the job.</TooltipContent>
+                <TooltipContent><p>How well your resume matches the job.</p></TooltipContent>
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <TabsTrigger value="skill-gap">
-                        <Target className="mr-2 h-4 w-4" />
+                        <Target className="mr-1.5 h-4 w-4" />
                         Skill Gap
                     </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent>Skills you're missing and how to learn them.</TooltipContent>
+                <TooltipContent><p>Skills you're missing and how to learn them.</p></TooltipContent>
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <TabsTrigger value="resume-report">
-                        <FileText className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="resume-report" disabled={!resumeAnalysis}>
+                        <ClipboardList className="mr-1.5 h-4 w-4" />
                         Resume Report
                     </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent>An analysis of your resume file for ATS issues.</TooltipContent>
+                <TooltipContent><p>An analysis of your resume file for ATS issues.</p></TooltipContent>
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <TabsTrigger value="suggestions">
-                        <Lightbulb className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="suggestions" disabled={!suggestions}>
+                        <Lightbulb className="mr-1.5 h-4 w-4" />
                         Suggestions
                     </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent>AI-powered ideas to improve your resume text.</TooltipContent>
+                <TooltipContent><p>AI-powered ideas to improve your resume text.</p></TooltipContent>
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <TabsTrigger value="simulation">
-                        <TestTube2 className="mr-2 h-4 w-4" />
+                        <TestTube2 className="mr-1.5 h-4 w-4" />
                         Simulator
                     </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent>Test changes to your resume and see the effect on your score.</TooltipContent>
+                <TooltipContent><p>Test changes and see the effect on your score.</p></TooltipContent>
             </Tooltip>
           </TabsList>
 
-          <TabsContent value="match-score" className="mt-4">
-            {loading.isMatching ? (
-              <LoadingIndicator text="Calculating your match score..." />
-            ) : matchAnalysis ? (
+          <TabsContent value="match-score" className="mt-6">
+            {matchAnalysis ? (
               <div className="space-y-6">
                 <div className="flex flex-col items-center justify-center gap-4 rounded-lg bg-muted/50 p-6">
                   <h3 className="font-headline text-lg font-semibold flex items-center gap-2">
@@ -236,25 +280,40 @@ export function ResultsPanel({
                   <MatchScoreChart score={matchAnalysis.matchScore} />
                 </div>
                 <div>
-                  <h4 className="font-headline text-md font-semibold mb-2">
+                  <h4 className="font-headline text-md font-semibold mb-2 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
                     Relevance Highlights
                   </h4>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {matchAnalysis.relevanceHighlights}
                   </p>
                 </div>
+                 {matchAnalysis.missingSkills && matchAnalysis.missingSkills.length > 0 && (
+                   <div>
+                    <h4 className="font-headline text-md font-semibold mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-amber-500" />
+                      Missing Keywords
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {matchAnalysis.missingSkills.map(skill => (
+                        <Badge key={skill} variant="destructive">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <p className="text-center text-sm text-muted-foreground p-8">
-                Provide a job description and resume text to get a match score.
-              </p>
+               <div className="text-center text-sm text-muted-foreground p-8 border-2 border-dashed rounded-lg min-h-[400px] flex flex-col justify-center items-center gap-4">
+                  <Gauge className="h-8 w-8 text-muted-foreground" />
+                  <p className="max-w-xs">Provide a job description and resume text to get your match score.</p>
+              </div>
             )}
           </TabsContent>
 
-          <TabsContent value="skill-gap" className="mt-4">
-            {loading.isAnalyzingGap ? (
-              <LoadingIndicator text="Analyzing skill gaps and building your roadmap..." />
-            ) : skillGapAnalysis && skillGapAnalysis.skillAnalysis.length > 0 ? (
+          <TabsContent value="skill-gap" className="mt-6">
+            {skillGapAnalysis && skillGapAnalysis.skillAnalysis.length > 0 ? (
               <div className="space-y-4">
                 <h3 className="font-headline text-lg font-semibold">
                   Your Personalized Learning Roadmap
@@ -263,13 +322,13 @@ export function ResultsPanel({
                 <Accordion type="multiple" className="w-full">
                   {skillGapAnalysis.skillAnalysis.map((skill, index) => (
                     <AccordionItem value={`skill-${index}`} key={skill.skill}>
-                      <AccordionTrigger className="font-semibold">
+                      <AccordionTrigger className="font-semibold text-base">
                         <div className="flex items-center gap-3">
                           <span>{skill.skill}</span>
                           <Badge variant="outline">{skill.learningLevel}</Badge>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="space-y-4">
+                      <AccordionContent className="space-y-4 pt-2">
                         <p className="text-sm text-muted-foreground">
                           <strong>Why it's important:</strong> {skill.importance}
                         </p>
@@ -278,11 +337,11 @@ export function ResultsPanel({
                           {skill.learningSteps.map((step, stepIndex) => (
                             <div
                               key={stepIndex}
-                              className="pl-4 border-l-2 border-primary/50"
+                              className="pl-4 border-l-2 border-primary"
                             >
-                              <p className="font-medium">{step.step}</p>
-                              <p className="text-xs text-muted-foreground italic">
-                                How to practice: {step.practiceIdeas}
+                              <p className="font-medium text-primary-dark">{step.step}</p>
+                              <p className="text-xs text-muted-foreground italic mt-1">
+                                <strong>Practice Idea:</strong> {step.practiceIdeas}
                               </p>
                             </div>
                           ))}
@@ -291,27 +350,19 @@ export function ResultsPanel({
                     </AccordionItem>
                   ))}
                 </Accordion>
-                <div className="text-center pt-4">
-                  <Button>
-                    <Rocket className="mr-2 h-4 w-4" />
-                    Launch My Learning Plan
-                  </Button>
-                </div>
               </div>
             ) : (
-              <p className="text-center text-sm text-muted-foreground p-8">
-                { !loading.isMatching && matchAnalysis && matchAnalysis.missingSkills.length === 0 
-                  ? "No significant skill gaps found. Your resume aligns well with the job requirements!"
-                  : "Enter a job description and resume to find skill gaps."
+               <div className="text-center text-sm text-muted-foreground p-8 border-2 border-dashed rounded-lg min-h-[400px] flex flex-col justify-center items-center gap-4">
+                { matchAnalysis && matchAnalysis.missingSkills.length === 0 
+                  ? <><CheckCircle2 className="h-8 w-8 text-green-500" /><p className="max-w-xs">No significant skill gaps found. Your resume aligns well with the job requirements!</p></>
+                  : <><Target className="h-8 w-8 text-muted-foreground" /><p className="max-w-xs">Enter a job description and resume to find skill gaps.</p></>
                 }
-              </p>
+              </div>
             )}
           </TabsContent>
 
-          <TabsContent value="resume-report" className="mt-4">
-            {loading.isParsing ? (
-              <LoadingIndicator text="Scanning your resume file..." />
-            ) : resumeAnalysis ? (
+          <TabsContent value="resume-report" className="mt-6">
+            {resumeAnalysis ? (
               <Accordion type="single" collapsible defaultValue="ats-blockers">
                 <AccordionItem value="ats-blockers">
                   <AccordionTrigger className="text-md font-semibold font-headline">
@@ -324,7 +375,7 @@ export function ResultsPanel({
                         </Tooltip>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="whitespace-pre-wrap">
+                  <AccordionContent className="whitespace-pre-wrap pt-2">
                     {resumeAnalysis.ats_blockers}
                   </AccordionContent>
                 </AccordionItem>
@@ -333,7 +384,7 @@ export function ResultsPanel({
                     <Sparkles className="mr-2 text-primary" />
                     Extracted Skills
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="pt-2">
                     <div className="flex flex-wrap gap-2">
                       {resumeAnalysis.skills.map(skill => (
                         <Badge key={skill} variant="secondary">
@@ -348,7 +399,7 @@ export function ResultsPanel({
                     <User className="mr-2 text-primary" />
                     Experience Summary
                   </AccordionTrigger>
-                  <AccordionContent className="whitespace-pre-wrap">
+                  <AccordionContent className="whitespace-pre-wrap pt-2">
                     {resumeAnalysis.experience}
                   </AccordionContent>
                 </AccordionItem>
@@ -357,36 +408,36 @@ export function ResultsPanel({
                     <List className="mr-2 text-primary" />
                     Education Summary
                   </AccordionTrigger>
-                  <AccordionContent className="whitespace-pre-wrap">{resumeAnalysis.education}</AccordionContent>
+                  <AccordionContent className="whitespace-pre-wrap pt-2">{resumeAnalysis.education}</AccordionContent>
                 </AccordionItem>
               </Accordion>
             ) : (
-              <p className="text-center text-sm text-muted-foreground p-8">
-                Upload a resume file to generate an ATS compatibility report.
-              </p>
+              <div className="text-center text-sm text-muted-foreground p-8 border-2 border-dashed rounded-lg min-h-[400px] flex flex-col justify-center items-center gap-4">
+                  <ClipboardList className="h-8 w-8 text-muted-foreground" />
+                  <p className="max-w-xs">Upload a resume file to generate an ATS compatibility report.</p>
+              </div>
             )}
           </TabsContent>
 
-          <TabsContent value="suggestions" className="mt-4">
-            {loading.isSuggesting ? (
-              <LoadingIndicator text="Generating AI optimization ideas..." />
-            ) : suggestions ? (
+          <TabsContent value="suggestions" className="mt-6">
+            {suggestions ? (
               <div>
-                <h4 className="font-headline text-md font-semibold mb-2">
+                <h4 className="font-headline text-lg font-semibold mb-2">
                   AI-Powered Suggestions
                 </h4>
                  <p className="text-sm text-muted-foreground mb-4">Here are some ideas for how to rewrite parts of your resume to better match the job description. Use these as inspiration!</p>
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/50 p-4 rounded-md">
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/50 p-4 rounded-md border">
                   {suggestions.suggestions}
                 </div>
               </div>
             ) : (
-              <p className="text-center text-sm text-muted-foreground p-8">
-                Provide a job description and resume text to get AI suggestions.
-              </p>
+               <div className="text-center text-sm text-muted-foreground p-8 border-2 border-dashed rounded-lg min-h-[400px] flex flex-col justify-center items-center gap-4">
+                  <Lightbulb className="h-8 w-8 text-muted-foreground" />
+                  <p className="max-w-xs">Provide a job description and resume text to get AI suggestions.</p>
+              </div>
             )}
           </TabsContent>
-          <TabsContent value="simulation" className="mt-4">
+          <TabsContent value="simulation" className="mt-6">
              <SimulationPanel 
                 originalResumeText={originalResumeText}
                 handleSimulate={handleSimulate}

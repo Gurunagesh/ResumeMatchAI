@@ -11,6 +11,7 @@ import { parseResumeContent } from '@/ai/flows/parse-resume-content';
 import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-score';
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
+import { Stepper } from '@/components/stepper';
 
 type LoadingStates = {
   isParsing: boolean;
@@ -43,9 +44,27 @@ export default function Home() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          title: 'File Too Large',
+          description: 'Please upload a file smaller than 2MB.',
+          variant: 'destructive',
+        });
+        event.target.value = ''; // Clear the input
+        return;
+      }
       setResumeFile(file);
+      setResumeText(''); // Clear text area when file is selected
     }
   };
+
+  const handleTextChange = (value: string) => {
+    setResumeText(value);
+    if (value) {
+      setResumeFile(null); // Clear file input when text is entered
+    }
+  };
+
 
   const fileToDataUri = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -56,11 +75,11 @@ export default function Home() {
     });
 
   const handleAnalyze = async () => {
-    if (!jobDescription && !resumeText && !resumeFile) {
+    if (!jobDescription || (!resumeText && !resumeFile)) {
       toast({
         title: 'Missing Information',
         description:
-          'Please provide a job description, resume text, or a resume file to analyze.',
+          'Please provide a job description and a resume to analyze.',
         variant: 'destructive',
       });
       return;
@@ -77,6 +96,8 @@ export default function Home() {
 
     try {
       const promises = [];
+      const resumeContentForAnalysis = resumeText || (resumeFile ? await fileToDataUri(resumeFile).then(dataUri => `data:${resumeFile.type};base64,${dataUri.split(',')[1]}`) : '');
+      const resumeAsTextForAnalysis = resumeText || (resumeFile ? 'Resume provided as a file.' : '');
 
       // 1. Parse Resume from file
       if (resumeFile) {
@@ -105,12 +126,14 @@ export default function Home() {
       }
 
       // 2. Match Score, 3. Suggestions, and 4. Skill Gap
-      if (jobDescription && resumeText) {
+      if (jobDescription && (resumeText || resumeFile)) {
+        const textForAnalysis = resumeText || "Resume content from uploaded file."
+
         const matchAndGapPromise = async () => {
           try {
             const matchAnalysis = await provideJobResumeMatchScore({
               jobDescription,
-              resume: resumeText,
+              resume: textForAnalysis,
             });
             setResults(prev => ({ ...prev, matchAnalysis }));
             setLoading(prev => ({ ...prev, isMatching: false }));
@@ -118,7 +141,7 @@ export default function Home() {
             if (matchAnalysis.missingSkills?.length > 0) {
               const skillGapAnalysis = await generateSkillGapAnalysis({
                 jobDescription,
-                resumeText,
+                resumeText: textForAnalysis,
                 missingSkills: matchAnalysis.missingSkills,
               });
               setResults(prev => ({ ...prev, skillGapAnalysis }));
@@ -140,7 +163,7 @@ export default function Home() {
           try {
             const suggestions = await generateResumeSuggestions({
               jobDescription,
-              resumeText,
+              resumeText: textForAnalysis,
             });
             setResults(prev => ({ ...prev, suggestions }));
           } catch (e) {
@@ -159,13 +182,6 @@ export default function Home() {
         promises.push(matchAndGapPromise(), suggestPromise());
       } else {
         setLoading(prev => ({ ...prev, isMatching: false, isSuggesting: false, isAnalyzingGap: false }));
-        if (jobDescription || resumeText) {
-          toast({
-            title: 'Incomplete Information',
-            description:
-              'Please provide both a job description and resume text for match scoring, suggestions, and skill gap analysis.',
-          });
-        }
       }
 
       await Promise.all(promises);
@@ -210,32 +226,41 @@ export default function Home() {
     }
   };
 
-
   const isAnalyzing =
     loading.isParsing || loading.isMatching || loading.isSuggesting || loading.isAnalyzingGap;
 
+  const currentStep = () => {
+    if (!jobDescription) return 1;
+    if (!resumeText && !resumeFile) return 2;
+    return 3;
+  };
+
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-50/50">
       <AppHeader />
       <main className="flex-1 p-4 sm:p-6 md:p-8">
-        <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <InputPanel
-            jobDescription={jobDescription}
-            setJobDescription={setJobDescription}
-            resumeText={resumeText}
-            setResumeText={setResumeText}
-            handleFileChange={handleFileChange}
-            handleAnalyze={handleAnalyze}
-            isAnalyzing={isAnalyzing}
-            fileName={resumeFile?.name}
-          />
-          <ResultsPanel 
-            loading={loading} 
-            results={results} 
-            originalResumeText={resumeText}
-            handleSimulate={handleSimulate}
-            simulationResult={simulationResult}
-          />
+        <div className="mx-auto max-w-7xl flex flex-col gap-8">
+          <Stepper currentStep={currentStep()} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <InputPanel
+              jobDescription={jobDescription}
+              setJobDescription={setJobDescription}
+              resumeText={resumeText}
+              setResumeText={handleTextChange}
+              handleFileChange={handleFileChange}
+              handleAnalyze={handleAnalyze}
+              isAnalyzing={isAnalyzing}
+              fileName={resumeFile?.name}
+              resumeFile={resumeFile}
+            />
+            <ResultsPanel 
+              loading={loading} 
+              results={results} 
+              originalResumeText={resumeText}
+              handleSimulate={handleSimulate}
+              simulationResult={simulationResult}
+            />
+          </div>
         </div>
       </main>
     </div>
