@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { File } from 'buffer';
 import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
@@ -12,6 +12,7 @@ import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
 import { Stepper } from '@/components/stepper';
+import { useAuth, useUser, initiateAnonymousSignIn } from '@/firebase';
 
 type LoadingStates = {
   isParsing: boolean;
@@ -40,6 +41,16 @@ export default function Home() {
     isSimulating: false,
   });
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+
+  useEffect(() => {
+    // When auth is ready and there's no user, sign in anonymously.
+    if (!isUserLoading && !user && auth) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [isUserLoading, user, auth]);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
