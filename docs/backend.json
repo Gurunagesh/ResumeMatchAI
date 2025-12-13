@@ -1,0 +1,206 @@
+{
+  "entities": {
+    "JobApplication": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "JobApplication",
+      "type": "object",
+      "description": "Represents a job application submitted by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the job application."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who submitted this application. (Relationship: User 1:N JobApplication)"
+        },
+        "jobTitle": {
+          "type": "string",
+          "description": "The title of the job applied for."
+        },
+        "company": {
+          "type": "string",
+          "description": "The company to which the application was submitted."
+        },
+        "applicationDate": {
+          "type": "string",
+          "description": "The date the application was submitted.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the application (e.g., Applied, Interviewing, Rejected, Offer)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any notes or comments about the application."
+        },
+        "jobDescriptionUrl": {
+          "type": "string",
+          "description": "URL to the job description, if available.",
+          "format": "uri"
+        },
+        "resumeId": {
+          "type": "string",
+          "description": "Reference to the Resume used for this application. (Relationship: Resume 1:N JobApplication)"
+        },
+        "matchScore": {
+          "type": "number",
+          "description": "AI-calculated match score between the resume and job description."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "jobTitle",
+        "company",
+        "applicationDate",
+        "status",
+        "resumeId"
+      ]
+    },
+    "Resume": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Resume",
+      "type": "object",
+      "description": "Represents a user's resume.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the resume."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this resume. (Relationship: User 1:N Resume)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title or name of the resume."
+        },
+        "content": {
+          "type": "string",
+          "description": "The full text content of the resume."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "The date the resume was uploaded.",
+          "format": "date-time"
+        },
+        "atsCompatibilityScore": {
+          "type": "number",
+          "description": "Score indicating the resume's compatibility with ATS systems."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "content",
+        "uploadDate"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "The date the user registered.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. The 'userId' parameter identifies the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/resumes/{resumeId}",
+        "definition": {
+          "entityName": "Resume",
+          "schema": {
+            "$ref": "#/backend/entities/Resume"
+          },
+          "description": "Stores resumes owned by a specific user. Includes 'userId' to enforce ownership and achieve authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "resumeId",
+              "description": "The unique identifier for the resume."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/job_applications/{jobApplicationId}",
+        "definition": {
+          "entityName": "JobApplication",
+          "schema": {
+            "$ref": "#/backend/entities/JobApplication"
+          },
+          "description": "Stores job applications submitted by a specific user. Includes 'userId' to enforce ownership and achieve authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "jobApplicationId",
+              "description": "The unique identifier for the job application."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure Authorization Independence, clarity, and scalability for the ResumeMatch AI application. It leverages path-based ownership for user-specific data (Resumes and Job Applications) and denormalization to avoid hierarchical authorization dependencies. Each collection follows a homogeneous security posture. Specifically:\n\n*   **Users:** Stores user profiles.\n*   **Resumes:** Each user has their own collection of resumes under `/users/{userId}/resumes/{resumeId}` ensuring only the user can access them.  The `userId` field is present in each `Resume` document.\n*   **JobApplications:** Similar to resumes, job applications are stored under `/users/{userId}/job_applications/{jobApplicationId}`. Each `JobApplication` document includes a `userId` field, enabling direct authorization rules without needing to access parent documents.\n\nThis design achieves Authorization Independence by including the `userId` in both the `resumes` and `job_applications` collections. This eliminates the need for `get()` calls in security rules to verify ownership.  It also facilitates QAPs by enabling secure `list` operations since each collection only contains data accessible to the specific user.  The path-based ownership model provides strong data segregation and simplifies security rules. The structure is optimized for the 1:N relationships between User, Resumes, and JobApplications using hierarchical paths."
+  }
+}

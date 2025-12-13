@@ -1,0 +1,135 @@
+/**
+ * @file firestore.rules
+ * @description Security rules for the Job Application Tracker application.
+ *
+ * @section Core Philosophy
+ * This ruleset enforces a strict user-ownership model. All data is segregated by user,
+ * and users can only access their own information. There is no concept of public or
+ * shared data, ensuring a high degree of privacy and data isolation.
+ *
+ * @section Data Structure
+ * Data is organized hierarchically under a top-level `users` collection. Each user's
+ * personal data, including their `resumes` and `job_applications`, is stored in
+ * subcollections under their unique document at `/users/{userId}`. This structure
+ * naturally partitions data by owner.
+ *
+ * @section Key Security Decisions
+ * - User Isolation: The primary security goal is to prevent any cross-user data access.
+ *   Users cannot list or view profiles, resumes, or applications belonging to others.
+ * - No Public Data: All collections are protected and require user authentication.
+ *   Listing all users from the top-level collection is explicitly disallowed to
+ *   prevent user enumeration attacks.
+ * - Default Deny: Access is denied by default. Rules are written to explicitly
+ *   grant permissions only under specific, secure conditions.
+ *
+ * @section Denormalization for Authorization
+ * To ensure fast, secure, and cost-effective authorization, the `userId` is
+ * denormalized (copied) onto every `Resume` and `JobApplication` document. This allows
+ * security rules to validate ownership by checking a field on the document itself,
+ * avoiding slow and costly `get()` calls to parent documents or other collections.
+ *
+ * @section Structural Segregation
+ * This pattern is not required for this application. The strict hierarchical structure
+ * of `/users/{userId}/...` inherently segregates all private user data, eliminating
+ * the need for separate public and private collections for the same entity type.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // Helper Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the cornerstone of the user-ownership security model.
+     * @param userId The UID to check against the authenticated user.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Verifies that a document exists before an update or delete operation.
+     * This prevents processing writes on documents that do not exist.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    /**
+     * Validates that the user ID within a new document matches the owner's UID.
+     * Enforces relational integrity on creation.
+     * @param userId The UID of the document owner.
+     */
+    function newDocHasCorrectOwner(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * Validates that the user ID field on a document is immutable.
+     * Prevents re-assigning ownership of a document after it has been created.
+     */
+    function ownerIsImmutable() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Rules for a user's own profile document.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user profile document.
+     * @deny (list) Any user, authenticated or not, trying to list all user profiles.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && isExistingDoc() && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && isExistingDoc();
+    }
+
+    /**
+     * @description Rules for a user's private resume documents.
+     * @path /users/{userId}/resumes/{resumeId}
+     * @allow (create) An authenticated user creating a resume under their own profile.
+     * @deny (get) A user trying to read a resume belonging to another user.
+     * @principle Enforces strict ownership for all operations on a user's private subcollection.
+     */
+    match /users/{userId}/resumes/{resumeId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && newDocHasCorrectOwner(userId);
+      allow update: if isOwner(userId) && isExistingDoc() && ownerIsImmutable();
+      allow delete: if isOwner(userId) && isExistingDoc();
+    }
+
+    /**
+     * @description Rules for a user's private job application documents.
+     * @path /users/{userId}/job_applications/{jobApplicationId}
+     * @allow (list) An authenticated user listing all job applications under their own profile.
+     * @deny (update) A user trying to modify a job application belonging to another user.
+     * @principle Enforces strict ownership and validates relational integrity via the denormalized `userId` field.
+     */
+    match /users/{userId}/job_applications/{jobApplicationId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && newDocHasCorrectOwner(userId);
+      allow update: if isOwner(userId) && isExistingDoc() && ownerIsImmutable();
+      allow delete: if isOwner(userId) && isExistingDoc();
+    }
+  }
+}
