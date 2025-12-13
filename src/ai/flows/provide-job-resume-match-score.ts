@@ -27,34 +27,13 @@ const ProvideJobResumeMatchScoreOutputSchema = z.object({
     .describe(
       'A summary of the skills and experiences in the resume that are relevant to the job description.'
     ),
+  missingSkills: z
+    .array(z.string())
+    .describe(
+      'A list of key skills mentioned in the job description that are missing from the resume.'
+    ),
 });
 export type ProvideJobResumeMatchScoreOutput = z.infer<typeof ProvideJobResumeMatchScoreOutputSchema>;
-
-export async function provideJobResumeMatchScore(
-  input: ProvideJobResumeMatchScoreInput
-): Promise<ProvideJobResumeMatchScoreOutput> {
-  return provideJobResumeMatchScoreFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'provideJobResumeMatchScorePrompt',
-  input: {schema: ProvideJobResumeMatchScoreInputSchema},
-  output: {schema: ProvideJobResumeMatchScoreOutputSchema},
-  prompt: `You are an AI expert in recruiting and talent acquisition.
-
-You will receive a job description and a resume.
-
-You will provide a match score (0-100) indicating how well the resume fits the job description. A higher score indicates a better match.
-
-You will also provide relevance highlights, summarizing the skills and experiences in the resume that align with the requirements of the job description.
-
-Job Description: {{{jobDescription}}}
-
-Resume: {{{resume}}}
-
-Match Score: 
-Relevance Highlights: `,
-});
 
 const provideJobResumeMatchScoreFlow = ai.defineFlow(
   {
@@ -63,7 +42,35 @@ const provideJobResumeMatchScoreFlow = ai.defineFlow(
     outputSchema: ProvideJobResumeMatchScoreOutputSchema,
   },
   async input => {
+    const prompt = ai.definePrompt({
+      name: 'provideJobResumeMatchScorePrompt',
+      input: {schema: ProvideJobResumeMatchScoreInputSchema},
+      output: {schema: ProvideJobResumeMatchScoreOutputSchema},
+      prompt: `You are an AI expert in recruiting and talent acquisition.
+
+You will receive a job description and a resume.
+
+Your tasks are to:
+1. Provide a match score (0-100) indicating how well the resume fits the job description. A higher score indicates a better match.
+2. Provide relevance highlights, summarizing the skills and experiences in the resume that align with the requirements of the job description.
+3. Identify and list the key skills that are mentioned in the job description but are missing from the resume.
+
+Job Description: {{{jobDescription}}}
+
+Resume: {{{resume}}}
+
+Provide the output in JSON format.
+`,
+    });
+
     const {output} = await prompt(input);
     return output!;
   }
 );
+
+
+export async function provideJobResumeMatchScore(
+  input: ProvideJobResumeMatchScoreInput
+): Promise<ProvideJobResumeMatchScoreOutput> {
+  return provideJobResumeMatchScoreFlow(input);
+}

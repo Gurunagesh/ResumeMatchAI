@@ -33,17 +33,19 @@ export type GenerateResumeSuggestionsOutput = z.infer<
   typeof GenerateResumeSuggestionsOutputSchema
 >;
 
-export async function generateResumeSuggestions(
-  input: GenerateResumeSuggestionsInput
-): Promise<GenerateResumeSuggestionsOutput> {
-  return generateResumeSuggestionsFlow(input);
-}
 
-const prompt = ai.definePrompt({
-  name: 'generateResumeSuggestionsPrompt',
-  input: {schema: GenerateResumeSuggestionsInputSchema},
-  output: {schema: GenerateResumeSuggestionsOutputSchema},
-  prompt: `You are an expert resume writer. Given the following resume and job description, provide suggestions to improve the resume by rewriting bullet points and inserting relevant keywords from the job description to increase its effectiveness.
+const generateResumeSuggestionsFlow = ai.defineFlow(
+  {
+    name: 'generateResumeSuggestionsFlow',
+    inputSchema: GenerateResumeSuggestionsInputSchema,
+    outputSchema: GenerateResumeSuggestionsOutputSchema,
+  },
+  async input => {
+    const prompt = ai.definePrompt({
+      name: 'generateResumeSuggestionsPrompt',
+      input: {schema: GenerateResumeSuggestionsInputSchema},
+      output: {schema: GenerateResumeSuggestionsOutputSchema},
+      prompt: `You are an expert resume writer. Given the following resume and job description, provide suggestions to improve the resume by rewriting bullet points and inserting relevant keywords from the job description to increase its effectiveness.
 
 Resume:
 {{{resumeText}}}
@@ -53,16 +55,14 @@ Job Description:
 
 Suggestions:
 `,
-});
-
-const generateResumeSuggestionsFlow = ai.defineFlow(
-  {
-    name: 'generateResumeSuggestionsFlow',
-    inputSchema: GenerateResumeSuggestionsInputSchema,
-    outputSchema: GenerateResumeSuggestionsOutputSchema,
-  },
-  async input => {
+    });
     const {output} = await prompt(input);
     return output!;
   }
 );
+
+export async function generateResumeSuggestions(
+  input: GenerateResumeSuggestionsInput
+): Promise<GenerateResumeSuggestionsOutput> {
+  return generateResumeSuggestionsFlow(input);
+}

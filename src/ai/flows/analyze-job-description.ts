@@ -35,24 +35,6 @@ export type AnalyzeJobDescriptionOutput = z.infer<
   typeof AnalyzeJobDescriptionOutputSchema
 >;
 
-export async function analyzeJobDescription(
-  input: AnalyzeJobDescriptionInput
-): Promise<AnalyzeJobDescriptionOutput> {
-  return analyzeJobDescriptionFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'analyzeJobDescriptionPrompt',
-  input: {schema: AnalyzeJobDescriptionInputSchema},
-  output: {schema: AnalyzeJobDescriptionOutputSchema},
-  prompt: `You are an expert job description analyzer. Analyze the job description provided and extract the key skills, experience level, and role type.
-
-Job Description:
-{{{jobDescription}}}
-
-Output the key skills, experience level, and role type in JSON format.`,
-});
-
 const analyzeJobDescriptionFlow = ai.defineFlow(
   {
     name: 'analyzeJobDescriptionFlow',
@@ -60,7 +42,25 @@ const analyzeJobDescriptionFlow = ai.defineFlow(
     outputSchema: AnalyzeJobDescriptionOutputSchema,
   },
   async input => {
+    const prompt = ai.definePrompt({
+      name: 'analyzeJobDescriptionPrompt',
+      input: {schema: AnalyzeJobDescriptionInputSchema},
+      output: {schema: AnalyzeJobDescriptionOutputSchema},
+      prompt: `You are an expert job description analyzer. Analyze the job description provided and extract the key skills, experience level, and role type.
+
+Job Description:
+{{{jobDescription}}}
+
+Output the key skills, experience level, and role type in JSON format.`,
+    });
+
     const {output} = await prompt(input);
     return output!;
   }
 );
+
+export async function analyzeJobDescription(
+  input: AnalyzeJobDescriptionInput
+): Promise<AnalyzeJobDescriptionOutput> {
+  return analyzeJobDescriptionFlow(input);
+}

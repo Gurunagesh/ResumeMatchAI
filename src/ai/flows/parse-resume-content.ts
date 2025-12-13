@@ -28,15 +28,18 @@ const ParseResumeContentOutputSchema = z.object({
 });
 export type ParseResumeContentOutput = z.infer<typeof ParseResumeContentOutputSchema>;
 
-export async function parseResumeContent(input: ParseResumeContentInput): Promise<ParseResumeContentOutput> {
-  return parseResumeContentFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'parseResumeContentPrompt',
-  input: {schema: ParseResumeContentInputSchema},
-  output: {schema: ParseResumeContentOutputSchema},
-  prompt: `You are an expert resume parser.
+const parseResumeContentFlow = ai.defineFlow(
+  {
+    name: 'parseResumeContentFlow',
+    inputSchema: ParseResumeContentInputSchema,
+    outputSchema: ParseResumeContentOutputSchema,
+  },
+  async input => {
+    const prompt = ai.definePrompt({
+      name: 'parseResumeContentPrompt',
+      input: {schema: ParseResumeContentInputSchema},
+      output: {schema: ParseResumeContentOutputSchema},
+      prompt: `You are an expert resume parser.
 
   Extract the following information from the resume content:
   - Skills: A list of skills mentioned in the resume.
@@ -47,16 +50,13 @@ const prompt = ai.definePrompt({
   Resume Content: {{media url=resumeDataUri}}
   Make sure to return the output as a valid JSON.
   `,
-});
+    });
 
-const parseResumeContentFlow = ai.defineFlow(
-  {
-    name: 'parseResumeContentFlow',
-    inputSchema: ParseResumeContentInputSchema,
-    outputSchema: ParseResumeContentOutputSchema,
-  },
-  async input => {
     const {output} = await prompt(input);
     return output!;
   }
 );
+
+export async function parseResumeContent(input: ParseResumeContentInput): Promise<ParseResumeContentOutput> {
+  return parseResumeContentFlow(input);
+}
