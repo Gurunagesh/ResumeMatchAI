@@ -16,4 +16,6 @@ export {
     CheckCircle2,
     BrainCircuit,
     ClipboardList,
+    Save,
+    LogOut,
 } from 'lucide-react';

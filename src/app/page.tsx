@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { File } from 'buffer';
+import { useState } from 'react';
+import type { File as BufferFile } from 'buffer';
 import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
 import { InputPanel } from '@/components/input-panel';
@@ -12,7 +12,9 @@ import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
 import { Stepper } from '@/components/stepper';
-import { useAuth, useUser, initiateAnonymousSignIn } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection } from 'firebase/firestore';
 
 type LoadingStates = {
   isParsing: boolean;
@@ -20,6 +22,7 @@ type LoadingStates = {
   isSuggesting: boolean;
   isAnalyzingGap: boolean;
   isSimulating: boolean;
+  isSaving: boolean;
 };
 
 export default function Home() {
@@ -39,17 +42,11 @@ export default function Home() {
     isSuggesting: false,
     isAnalyzingGap: false,
     isSimulating: false,
+    isSaving: false,
   });
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-
-  useEffect(() => {
-    // When auth is ready and there's no user, sign in anonymously.
-    if (!isUserLoading && !user && auth) {
-      initiateAnonymousSignIn(auth);
-    }
-  }, [isUserLoading, user, auth]);
+  const { user } = useUser();
+  const firestore = useFirestore();
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +100,7 @@ export default function Home() {
       skillGapAnalysis: null,
     });
     setSimulationResult(null);
-    setLoading({ isParsing: true, isMatching: true, isSuggesting: true, isAnalyzingGap: true, isSimulating: false });
+    setLoading({ isParsing: true, isMatching: true, isSuggesting: true, isAnalyzingGap: true, isSimulating: false, isSaving: false });
 
     try {
       const promises = [];
@@ -203,7 +200,7 @@ export default function Home() {
         description: 'Please try again later.',
         variant: 'destructive',
       });
-      setLoading({ isParsing: false, isMatching: false, isSuggesting: false, isAnalyzingGap: false, isSimulating: false });
+      setLoading({ isParsing: false, isMatching: false, isSuggesting: false, isAnalyzingGap: false, isSimulating: false, isSaving: false });
     }
   };
   
@@ -236,6 +233,64 @@ export default function Home() {
       setLoading(prev => ({ ...prev, isSimulating: false }));
     }
   };
+
+  const handleSaveAnalysis = async () => {
+    if (!user || !firestore) {
+      toast({
+        title: 'Authentication Required',
+        description: 'You must be signed in to save an analysis. Please sign up or log in.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!results.matchAnalysis) {
+      toast({
+        title: 'No Analysis to Save',
+        description: 'Please run an analysis before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, isSaving: true }));
+
+    try {
+      const jobApplicationData = {
+        userId: user.uid,
+        jobTitle: 'Untitled Job', // Placeholder, can be improved
+        company: 'Unknown Company', // Placeholder
+        applicationDate: new Date().toISOString(),
+        status: 'Analyzed',
+        jobDescription,
+        resumeContent: resumeText || "Uploaded resume",
+        matchScore: results.matchAnalysis.matchScore,
+        relevanceHighlights: results.matchAnalysis.relevanceHighlights,
+        missingSkills: results.matchAnalysis.missingSkills,
+        suggestions: results.suggestions?.suggestions,
+        skillGapAnalysis: results.skillGapAnalysis,
+        createdAt: new Date().toISOString(),
+      };
+
+      const applicationsRef = collection(firestore, `users/${user.uid}/job_applications`);
+      await addDocumentNonBlocking(applicationsRef, jobApplicationData);
+
+      toast({
+        title: 'Analysis Saved!',
+        description: 'Your job application analysis has been saved to your tracker.',
+      });
+    } catch (error) {
+      console.error("Error saving analysis:", error);
+      toast({
+        title: 'Error Saving Analysis',
+        description: 'Could not save the analysis. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, isSaving: false }));
+    }
+  };
+
 
   const isAnalyzing =
     loading.isParsing || loading.isMatching || loading.isSuggesting || loading.isAnalyzingGap;
@@ -270,6 +325,7 @@ export default function Home() {
               originalResumeText={resumeText}
               handleSimulate={handleSimulate}
               simulationResult={simulationResult}
+              handleSaveAnalysis={handleSaveAnalysis}
             />
           </div>
         </div>

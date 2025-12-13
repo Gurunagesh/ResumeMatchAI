@@ -26,13 +26,15 @@ import {
   ArrowRight,
   CheckCircle2,
   BrainCircuit,
-  ClipboardList
+  ClipboardList,
+  Save,
 } from 'lucide-react';
 import { MatchScoreChart } from './match-score-chart';
 import { Spinner } from './ui/spinner';
 import type { AnalysisResults, MatchAnalysis } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import { Textarea } from './ui/textarea';
+import { useUser } from '@/firebase';
 
 type ResultsPanelProps = {
   loading: {
@@ -41,11 +43,13 @@ type ResultsPanelProps = {
     isSuggesting: boolean;
     isAnalyzingGap: boolean;
     isSimulating: boolean;
+    isSaving: boolean;
   };
   results: AnalysisResults;
   originalResumeText: string;
   handleSimulate: (modifiedResume: string) => void;
   simulationResult: MatchAnalysis | null;
+  handleSaveAnalysis: () => void;
 };
 
 const LoadingIndicator = ({ text }: { text: string }) => (
@@ -168,9 +172,12 @@ export function ResultsPanel({
   originalResumeText,
   handleSimulate,
   simulationResult,
+  handleSaveAnalysis,
 }: ResultsPanelProps) {
   const { resumeAnalysis, matchAnalysis, suggestions, skillGapAnalysis } =
     results;
+  const { user } = useUser();
+
   const isInitialState =
     !resumeAnalysis && !matchAnalysis && !suggestions && !skillGapAnalysis;
   const isLoading =
@@ -210,10 +217,32 @@ export function ResultsPanel({
 
   return (
     <Card className="shadow-sm bg-white">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="font-headline text-xl tracking-tight">
           Analysis Results
         </CardTitle>
+        {matchAnalysis && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveAnalysis}
+                  disabled={loading.isSaving || !user}
+                >
+                  {loading.isSaving ? <Spinner className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Analysis
+                </Button>
+              </TooltipTrigger>
+              {!user && (
+                <TooltipContent>
+                  <p>Please log in or sign up to save your analysis.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </CardHeader>
       <CardContent>
       <TooltipProvider delayDuration={0}>
