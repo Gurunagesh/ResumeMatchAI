@@ -18,4 +18,5 @@ export {
     ClipboardList,
     Save,
     LogOut,
+    BookMarked,
 } from 'lucide-react';
