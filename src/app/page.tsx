@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
 import { InputPanel } from '@/components/input-panel';
 import { ResultsPanel } from '@/components/results-panel';
-import type { AnalysisResults } from '@/lib/types';
+import type { AnalysisResults, MatchAnalysis } from '@/lib/types';
 import { parseResumeContent } from '@/ai/flows/parse-resume-content';
 import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-score';
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
@@ -17,6 +17,7 @@ type LoadingStates = {
   isMatching: boolean;
   isSuggesting: boolean;
   isAnalyzingGap: boolean;
+  isSimulating: boolean;
 };
 
 export default function Home() {
@@ -29,11 +30,13 @@ export default function Home() {
     suggestions: null,
     skillGapAnalysis: null,
   });
+  const [simulationResult, setSimulationResult] = useState<MatchAnalysis | null>(null);
   const [loading, setLoading] = useState<LoadingStates>({
     isParsing: false,
     isMatching: false,
     isSuggesting: false,
     isAnalyzingGap: false,
+    isSimulating: false,
   });
   const { toast } = useToast();
 
@@ -69,7 +72,8 @@ export default function Home() {
       suggestions: null,
       skillGapAnalysis: null,
     });
-    setLoading({ isParsing: true, isMatching: true, isSuggesting: true, isAnalyzingGap: true });
+    setSimulationResult(null);
+    setLoading({ isParsing: true, isMatching: true, isSuggesting: true, isAnalyzingGap: true, isSimulating: false });
 
     try {
       const promises = [];
@@ -172,9 +176,40 @@ export default function Home() {
         description: 'Please try again later.',
         variant: 'destructive',
       });
-      setLoading({ isParsing: false, isMatching: false, isSuggesting: false, isAnalyzingGap: false });
+      setLoading({ isParsing: false, isMatching: false, isSuggesting: false, isAnalyzingGap: false, isSimulating: false });
     }
   };
+  
+  const handleSimulate = async (modifiedResume: string) => {
+    if (!jobDescription || !modifiedResume) {
+      toast({
+        title: 'Missing Information',
+        description: 'Job description and resume text are needed for simulation.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setLoading(prev => ({ ...prev, isSimulating: true }));
+    setSimulationResult(null);
+
+    try {
+      const simulatedMatch = await provideJobResumeMatchScore({
+        jobDescription,
+        resume: modifiedResume,
+      });
+      setSimulationResult(simulatedMatch);
+    } catch (e) {
+      console.error('Error during simulation:', e);
+      toast({
+        title: 'Simulation Error',
+        description: 'Could not simulate the resume changes.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, isSimulating: false }));
+    }
+  };
+
 
   const isAnalyzing =
     loading.isParsing || loading.isMatching || loading.isSuggesting || loading.isAnalyzingGap;
@@ -194,7 +229,13 @@ export default function Home() {
             isAnalyzing={isAnalyzing}
             fileName={resumeFile?.name}
           />
-          <ResultsPanel loading={loading} results={results} />
+          <ResultsPanel 
+            loading={loading} 
+            results={results} 
+            originalResumeText={resumeText}
+            handleSimulate={handleSimulate}
+            simulationResult={simulationResult}
+          />
         </div>
       </main>
     </div>

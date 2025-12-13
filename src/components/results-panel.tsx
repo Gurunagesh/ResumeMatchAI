@@ -20,10 +20,14 @@ import {
   Sparkles,
   Target,
   User,
+  TestTube2,
+  ArrowRight,
 } from 'lucide-react';
 import { MatchScoreChart } from './match-score-chart';
 import { Spinner } from './ui/spinner';
-import type { AnalysisResults } from '@/lib/types';
+import type { AnalysisResults, MatchAnalysis } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { Textarea } from './ui/textarea';
 
 type ResultsPanelProps = {
   loading: {
@@ -31,8 +35,12 @@ type ResultsPanelProps = {
     isMatching: boolean;
     isSuggesting: boolean;
     isAnalyzingGap: boolean;
+    isSimulating: boolean;
   };
   results: AnalysisResults;
+  originalResumeText: string;
+  handleSimulate: (modifiedResume: string) => void;
+  simulationResult: MatchAnalysis | null;
 };
 
 const LoadingIndicator = ({ text }: { text: string }) => (
@@ -54,7 +62,84 @@ const EmptyState = () => (
   </div>
 );
 
-export function ResultsPanel({ loading, results }: ResultsPanelProps) {
+const SimulationPanel = ({
+  originalResumeText,
+  handleSimulate,
+  loading,
+  originalMatchScore,
+  simulationResult,
+}: {
+  originalResumeText: string;
+  handleSimulate: (text: string) => void;
+  loading: boolean;
+  originalMatchScore?: number;
+  simulationResult: MatchAnalysis | null;
+}) => {
+  const [modifiedResume, setModifiedResume] = useState(originalResumeText);
+
+  useEffect(() => {
+    setModifiedResume(originalResumeText);
+  }, [originalResumeText]);
+  
+  if (originalMatchScore === undefined) {
+    return (
+       <p className="text-center text-sm text-muted-foreground p-8">
+        Run an initial analysis to enable the "What-If" simulator.
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+       <h3 className="font-headline text-lg font-semibold">
+        What-If Resume Simulator
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        Edit your resume text below and click "Simulate Changes" to see how it impacts your match score before making permanent changes.
+      </p>
+      <Textarea
+        value={modifiedResume}
+        onChange={(e) => setModifiedResume(e.target.value)}
+        className="min-h-[250px] text-sm"
+        placeholder="Your modified resume text goes here..."
+      />
+      <Button onClick={() => handleSimulate(modifiedResume)} disabled={loading}>
+        {loading ? <Spinner className="mr-2" /> : <TestTube2 className="mr-2 h-4 w-4" /> }
+        Simulate Changes
+      </Button>
+
+      {loading && <LoadingIndicator text="Simulating new score..." />}
+      
+      {!loading && simulationResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline text-md">Simulation Results</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-around gap-4">
+             <div className="text-center">
+                <p className="font-headline text-sm text-muted-foreground">Original Score</p>
+                <p className="text-4xl font-bold">{originalMatchScore}%</p>
+             </div>
+             <ArrowRight className="h-8 w-8 text-primary" />
+             <div className="text-center">
+                <p className="font-headline text-sm text-muted-foreground">Simulated Score</p>
+                <p className="text-4xl font-bold text-primary">{simulationResult.matchScore}%</p>
+             </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+
+};
+
+export function ResultsPanel({
+  loading,
+  results,
+  originalResumeText,
+  handleSimulate,
+  simulationResult,
+}: ResultsPanelProps) {
   const { resumeAnalysis, matchAnalysis, suggestions, skillGapAnalysis } =
     results;
   const isInitialState =
@@ -84,7 +169,7 @@ export function ResultsPanel({ loading, results }: ResultsPanelProps) {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="match-score">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="match-score">
               <Gauge className="mr-2 h-4 w-4" />
               Match Score
@@ -100,6 +185,10 @@ export function ResultsPanel({ loading, results }: ResultsPanelProps) {
             <TabsTrigger value="suggestions">
               <Lightbulb className="mr-2 h-4 w-4" />
               Suggestions
+            </TabsTrigger>
+            <TabsTrigger value="simulation">
+              <TestTube2 className="mr-2 h-4 w-4" />
+              Simulation
             </TabsTrigger>
           </TabsList>
 
@@ -257,6 +346,15 @@ export function ResultsPanel({ loading, results }: ResultsPanelProps) {
                 suggestions.
               </p>
             )}
+          </TabsContent>
+          <TabsContent value="simulation" className="mt-4">
+             <SimulationPanel 
+                originalResumeText={originalResumeText}
+                handleSimulate={handleSimulate}
+                loading={loading.isSimulating}
+                originalMatchScore={results.matchAnalysis?.matchScore}
+                simulationResult={simulationResult}
+              />
           </TabsContent>
         </Tabs>
       </CardContent>
