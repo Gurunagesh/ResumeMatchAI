@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { File as BufferFile } from 'buffer';
 import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
@@ -12,7 +12,7 @@ import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
 import { Stepper } from '@/components/stepper';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useAuth, initiateAnonymousSignIn } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
 
@@ -47,7 +47,13 @@ export default function Home() {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
 
+  useEffect(() => {
+    if (auth && !auth.currentUser) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [auth]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

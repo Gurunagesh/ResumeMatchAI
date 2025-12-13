@@ -29,7 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/firebase';
-import { initiateEmailSignIn, initiateEmailSignUp, initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { Spinner } from './ui/spinner';
 import { FirebaseError } from 'firebase/app';
 
@@ -85,6 +85,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       case 'auth/invalid-email':
         description = 'The email address is not valid.';
         break;
+      case 'auth/credential-already-in-use':
+        description = 'This account is already linked to another user.';
+        break;
     }
     toast({
         variant: 'destructive',
@@ -111,24 +114,6 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     if (!auth) return;
     setIsLoading(true);
     
-    // Ensure anonymous user exists before trying to sign up
-    if (!auth.currentUser) {
-        try {
-            await new Promise<void>((resolve, reject) => {
-                const unsubscribe = auth.onAuthStateChanged(user => {
-                    unsubscribe();
-                    if (user) resolve();
-                    else reject(new Error("Failed to ensure anonymous user."));
-                });
-                initiateAnonymousSignIn(auth);
-            });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Initialization Failed', description: 'Could not prepare for sign-up. Please try again.' });
-            setIsLoading(false);
-            return;
-        }
-    }
-
     try {
       await initiateEmailSignUp(auth, values.email, values.password);
       toast({ title: 'Sign-up Successful!', description: "Welcome! You're now logged in." });
