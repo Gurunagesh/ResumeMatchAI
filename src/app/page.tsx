@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { File as BufferFile } from 'buffer';
 import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
 import { InputPanel } from '@/components/input-panel';
@@ -16,15 +15,6 @@ import { useFirestore, useUser, useAuth, initiateAnonymousSignIn } from '@/fireb
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
 
-type LoadingStates = {
-  isParsing: boolean;
-  isMatching: boolean;
-  isSuggesting: boolean;
-  isAnalyzingGap: boolean;
-  isSimulating: boolean;
-  isSaving: boolean;
-};
-
 export default function Home() {
   const [jobDescription, setJobDescription] = useState<string>('');
   const [resumeText, setResumeText] = useState<string>('');
@@ -36,14 +26,10 @@ export default function Home() {
     skillGapAnalysis: null,
   });
   const [simulationResult, setSimulationResult] = useState<MatchAnalysis | null>(null);
-  const [loading, setLoading] = useState<LoadingStates>({
-    isParsing: false,
-    isMatching: false,
-    isSuggesting: false,
-    isAnalyzingGap: false,
-    isSimulating: false,
-    isSaving: false,
-  });
+  const [loadingText, setLoadingText] = useState<string | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
@@ -99,6 +85,7 @@ export default function Home() {
       return;
     }
 
+    // Reset previous results
     setResults({
       resumeAnalysis: null,
       matchAnalysis: null,
@@ -106,107 +93,94 @@ export default function Home() {
       skillGapAnalysis: null,
     });
     setSimulationResult(null);
-    setLoading({ isParsing: true, isMatching: true, isSuggesting: true, isAnalyzingGap: true, isSimulating: false, isSaving: false });
+    setLoadingText('Starting analysis...');
 
     try {
-      const promises = [];
-      const resumeContentForAnalysis = resumeText || (resumeFile ? await fileToDataUri(resumeFile).then(dataUri => `data:${resumeFile.type};base64,${dataUri.split(',')[1]}`) : '');
-      const resumeAsTextForAnalysis = resumeText || (resumeFile ? 'Resume provided as a file.' : '');
+      const textForAnalysis = resumeText || "Resume content from uploaded file.";
 
-      // 1. Parse Resume from file
+      // Step 1: Parse Resume from file (if provided)
       if (resumeFile) {
-        const parsePromise = async () => {
-          try {
-            const dataUri = await fileToDataUri(resumeFile);
-            const resumeAnalysis = await parseResumeContent({
-              resumeDataUri: dataUri,
-            });
-            setResults(prev => ({ ...prev, resumeAnalysis }));
-          } catch (e) {
-            console.error('Error parsing resume:', e);
-            toast({
-              title: 'Error Parsing Resume',
-              description: 'Could not analyze the uploaded resume file.',
-              variant: 'destructive',
-            });
-            setResults(prev => ({ ...prev, resumeAnalysis: null }));
-          } finally {
-            setLoading(prev => ({ ...prev, isParsing: false }));
-          }
-        };
-        promises.push(parsePromise());
-      } else {
-        setLoading(prev => ({ ...prev, isParsing: false }));
+        setLoadingText('Scanning your resume for ATS issues...');
+        try {
+          const dataUri = await fileToDataUri(resumeFile);
+          const resumeAnalysis = await parseResumeContent({ resumeDataUri: dataUri });
+          setResults(prev => ({ ...prev, resumeAnalysis }));
+        } catch (e) {
+          console.error('Error parsing resume:', e);
+          toast({
+            title: 'Error Parsing Resume',
+            description: 'Could not analyze the uploaded resume file. Continuing with other analyses.',
+            variant: 'destructive',
+          });
+        }
       }
 
-      // 2. Match Score, 3. Suggestions, and 4. Skill Gap
-      if (jobDescription && (resumeText || resumeFile)) {
-        const textForAnalysis = resumeText || "Resume content from uploaded file."
-
-        const matchAndGapPromise = async () => {
-          try {
-            const matchAnalysis = await provideJobResumeMatchScore({
-              jobDescription,
-              resume: textForAnalysis,
-            });
-            setResults(prev => ({ ...prev, matchAnalysis }));
-            setLoading(prev => ({ ...prev, isMatching: false }));
-
-            if (matchAnalysis.missingSkills?.length > 0) {
-              const skillGapAnalysis = await generateSkillGapAnalysis({
-                jobDescription,
-                resumeText: textForAnalysis,
-                missingSkills: matchAnalysis.missingSkills,
-              });
-              setResults(prev => ({ ...prev, skillGapAnalysis }));
-            }
-          } catch (e) {
-            console.error('Error during match and skill gap analysis:', e);
-            toast({
-              title: 'Error during Analysis',
-              description: 'Could not perform the job-resume match or skill gap analysis.',
-              variant: 'destructive',
-            });
-            setResults(prev => ({ ...prev, matchAnalysis: null, skillGapAnalysis: null }));
-          } finally {
-            setLoading(prev => ({ ...prev, isMatching: false, isAnalyzingGap: false }));
-          }
-        };
-
-        const suggestPromise = async () => {
-          try {
-            const suggestions = await generateResumeSuggestions({
-              jobDescription,
-              resumeText: textForAnalysis,
-            });
-            setResults(prev => ({ ...prev, suggestions }));
-          } catch (e) {
-            console.error('Error generating suggestions:', e);
-            toast({
-              title: 'Error Generating Suggestions',
-              description: 'Could not generate resume optimization suggestions.',
-              variant: 'destructive',
-            });
-            setResults(prev => ({ ...prev, suggestions: null }));
-          } finally {
-            setLoading(prev => ({ ...prev, isSuggesting: false }));
-          }
-        };
-
-        promises.push(matchAndGapPromise(), suggestPromise());
-      } else {
-        setLoading(prev => ({ ...prev, isMatching: false, isSuggesting: false, isAnalyzingGap: false }));
+      // Step 2: Get Match Score
+      setLoadingText('Calculating your match score...');
+      let matchAnalysis: MatchAnalysis | null = null;
+      try {
+        matchAnalysis = await provideJobResumeMatchScore({
+          jobDescription,
+          resume: textForAnalysis,
+        });
+        setResults(prev => ({ ...prev, matchAnalysis }));
+      } catch (e) {
+        console.error('Error getting match score:', e);
+        toast({
+          title: 'Error Calculating Match Score',
+          description: 'Could not perform the job-resume match analysis.',
+          variant: 'destructive',
+        });
+        setLoadingText(null); // Stop loading if this critical step fails
+        return;
+      }
+      
+      // Step 3: Generate Skill Gap Analysis (if missing skills are found)
+      if (matchAnalysis?.missingSkills && matchAnalysis.missingSkills.length > 0) {
+        setLoadingText('Analyzing skill gaps...');
+        try {
+          const skillGapAnalysis = await generateSkillGapAnalysis({
+            jobDescription,
+            resumeText: textForAnalysis,
+            missingSkills: matchAnalysis.missingSkills,
+          });
+          setResults(prev => ({ ...prev, skillGapAnalysis }));
+        } catch (e) {
+          console.error('Error analyzing skill gap:', e);
+          toast({
+            title: 'Error Analyzing Skill Gaps',
+            description: 'Could not generate the skill gap analysis.',
+            variant: 'destructive',
+          });
+        }
+      }
+      
+      // Step 4: Generate Suggestions
+      setLoadingText('Generating AI optimization ideas...');
+      try {
+        const suggestions = await generateResumeSuggestions({
+          jobDescription,
+          resumeText: textForAnalysis,
+        });
+        setResults(prev => ({ ...prev, suggestions }));
+      } catch (e) {
+        console.error('Error generating suggestions:', e);
+        toast({
+          title: 'Error Generating Suggestions',
+          description: 'Could not generate resume optimization suggestions.',
+          variant: 'destructive',
+        });
       }
 
-      await Promise.all(promises);
     } catch (error) {
-      console.error('An unexpected error occurred:', error);
+      console.error('An unexpected error occurred during analysis:', error);
       toast({
         title: 'An Unexpected Error Occurred',
         description: 'Please try again later.',
         variant: 'destructive',
       });
-      setLoading({ isParsing: false, isMatching: false, isSuggesting: false, isAnalyzingGap: false, isSimulating: false, isSaving: false });
+    } finally {
+      setLoadingText(null); // All steps are done
     }
   };
   
@@ -219,7 +193,7 @@ export default function Home() {
       });
       return;
     }
-    setLoading(prev => ({ ...prev, isSimulating: true }));
+    setIsSimulating(true);
     setSimulationResult(null);
 
     try {
@@ -236,7 +210,7 @@ export default function Home() {
         variant: 'destructive',
       });
     } finally {
-      setLoading(prev => ({ ...prev, isSimulating: false }));
+      setIsSimulating(false);
     }
   };
 
@@ -259,7 +233,7 @@ export default function Home() {
       return;
     }
 
-    setLoading(prev => ({ ...prev, isSaving: true }));
+    setIsSaving(true);
 
     try {
       const jobApplicationData = {
@@ -293,17 +267,16 @@ export default function Home() {
         variant: 'destructive',
       });
     } finally {
-      setLoading(prev => ({ ...prev, isSaving: false }));
+      setIsSaving(false);
     }
   };
 
-
-  const isAnalyzing =
-    loading.isParsing || loading.isMatching || loading.isSuggesting || loading.isAnalyzingGap;
+  const isAnalyzing = !!loadingText;
 
   const currentStep = () => {
     if (!jobDescription) return 1;
     if (!resumeText && !resumeFile) return 2;
+    if (isAnalyzing || Object.values(results).some(r => r !== null)) return 3;
     return 3;
   };
 
@@ -326,7 +299,9 @@ export default function Home() {
               resumeFile={resumeFile}
             />
             <ResultsPanel 
-              loading={loading} 
+              loadingText={loadingText}
+              isSimulating={isSimulating}
+              isSaving={isSaving} 
               results={results} 
               originalResumeText={resumeText}
               handleSimulate={handleSimulate}

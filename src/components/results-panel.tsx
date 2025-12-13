@@ -39,14 +39,9 @@ import { SuggestionsTab } from './results/suggestions-tab';
 import { SimulationTab } from './results/simulation-tab';
 
 type ResultsPanelProps = {
-  loading: {
-    isParsing: boolean;
-    isMatching: boolean;
-    isSuggesting: boolean;
-    isAnalyzingGap: boolean;
-    isSimulating: boolean;
-    isSaving: boolean;
-  };
+  loadingText: string | null;
+  isSimulating: boolean;
+  isSaving: boolean;
   results: AnalysisResults;
   originalResumeText: string;
   handleSimulate: (modifiedResume: string) => void;
@@ -55,7 +50,9 @@ type ResultsPanelProps = {
 };
 
 export function ResultsPanel({
-  loading,
+  loadingText,
+  isSimulating,
+  isSaving,
   results,
   originalResumeText,
   handleSimulate,
@@ -68,11 +65,7 @@ export function ResultsPanel({
 
   const isInitialState =
     !resumeAnalysis && !matchAnalysis && !suggestions && !skillGapAnalysis;
-  const isLoading =
-    loading.isParsing ||
-    loading.isMatching ||
-    loading.isSuggesting ||
-    loading.isAnalyzingGap;
+  const isLoading = !!loadingText;
 
   if (isInitialState && !isLoading) {
     return (
@@ -83,20 +76,12 @@ export function ResultsPanel({
       </Card>
     );
   }
-
-  const getLoadingText = () => {
-    if (loading.isMatching) return 'Calculating your match score...';
-    if (loading.isAnalyzingGap) return 'Analyzing skill gaps...';
-    if (loading.isSuggesting) return 'Generating AI optimization ideas...';
-    if (loading.isParsing) return 'Scanning your resume file for ATS issues...';
-    return 'Loading analysis...';
-  };
-
+  
   if (isLoading) {
     return (
       <Card className="shadow-sm h-full">
         <CardContent className="p-4 h-full">
-          <LoadingIndicator text={getLoadingText()} />
+          <LoadingIndicator text={loadingText || 'Loading analysis...'} />
         </CardContent>
       </Card>
     );
@@ -116,9 +101,9 @@ export function ResultsPanel({
                   variant="outline"
                   size="sm"
                   onClick={handleSaveAnalysis}
-                  disabled={loading.isSaving || !user}
+                  disabled={isSaving || !user}
                 >
-                  {loading.isSaving ? (
+                  {isSaving ? (
                     <Spinner className="mr-2 h-4 w-4" />
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
@@ -141,7 +126,7 @@ export function ResultsPanel({
             <TabsList className="grid w-full grid-cols-5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TabsTrigger value="match-score">
+                  <TabsTrigger value="match-score" disabled={!matchAnalysis}>
                     <Gauge className="mr-1.5 h-4 w-4" />
                     Match Score
                   </TabsTrigger>
@@ -152,7 +137,7 @@ export function ResultsPanel({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TabsTrigger value="skill-gap">
+                  <TabsTrigger value="skill-gap" disabled={!skillGapAnalysis && !matchAnalysis}>
                     <Target className="mr-1.5 h-4 w-4" />
                     Skill Gap
                   </TabsTrigger>
@@ -188,7 +173,7 @@ export function ResultsPanel({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TabsTrigger value="simulation">
+                  <TabsTrigger value="simulation" disabled={!matchAnalysis}>
                     <TestTube2 className="mr-1.5 h-4 w-4" />
                     Simulator
                   </TabsTrigger>
@@ -222,7 +207,7 @@ export function ResultsPanel({
               <SimulationTab
                 originalResumeText={originalResumeText}
                 handleSimulate={handleSimulate}
-                loading={loading.isSimulating}
+                loading={isSimulating}
                 originalMatchScore={results.matchAnalysis?.matchScore}
                 simulationResult={simulationResult}
               />
