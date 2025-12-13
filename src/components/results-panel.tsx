@@ -10,10 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   AlertTriangle,
   FileText,
   Gauge,
+  HelpCircle,
   Lightbulb,
   List,
   Rocket,
@@ -54,10 +56,10 @@ const EmptyState = () => (
   <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center h-full">
     <Sparkles className="h-10 w-10 text-muted-foreground" />
     <h3 className="font-headline text-lg font-semibold">
-      Your AI Analysis Awaits
+      Your AI Analysis Will Appear Here
     </h3>
     <p className="text-sm text-muted-foreground">
-      Fill in the details on the left and run the analysis to see your results.
+      Enter a job description and your resume, then click "Run AI Analysis".
     </p>
   </div>
 );
@@ -84,7 +86,7 @@ const SimulationPanel = ({
   if (originalMatchScore === undefined) {
     return (
        <p className="text-center text-sm text-muted-foreground p-8">
-        Run an initial analysis to enable the "What-If" simulator.
+        Run an analysis first to unlock the "What-If" simulator.
       </p>
     )
   }
@@ -92,10 +94,10 @@ const SimulationPanel = ({
   return (
     <div className="space-y-4">
        <h3 className="font-headline text-lg font-semibold">
-        What-If Resume Simulator
+        "What-If" Resume Simulator
       </h3>
       <p className="text-sm text-muted-foreground">
-        Edit your resume text below and click "Simulate Changes" to see how it impacts your match score before making permanent changes.
+        Curious if a change will improve your score? Edit your resume below and simulate the result before you make the change for real.
       </p>
       <Textarea
         value={modifiedResume}
@@ -105,7 +107,7 @@ const SimulationPanel = ({
       />
       <Button onClick={() => handleSimulate(modifiedResume)} disabled={loading}>
         {loading ? <Spinner className="mr-2" /> : <TestTube2 className="mr-2 h-4 w-4" /> }
-        Simulate Changes
+        Simulate Score Change
       </Button>
 
       {loading && <LoadingIndicator text="Simulating new score..." />}
@@ -122,7 +124,7 @@ const SimulationPanel = ({
              </div>
              <ArrowRight className="h-8 w-8 text-primary" />
              <div className="text-center">
-                <p className="font-headline text-sm text-muted-foreground">Simulated Score</p>
+                <p className="font-headline text-sm text-muted-foreground">New Score</p>
                 <p className="text-4xl font-bold text-primary">{simulationResult.matchScore}%</p>
              </div>
           </CardContent>
@@ -168,38 +170,68 @@ export function ResultsPanel({
         </CardTitle>
       </CardHeader>
       <CardContent>
+      <TooltipProvider>
         <Tabs defaultValue="match-score">
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="match-score">
-              <Gauge className="mr-2 h-4 w-4" />
-              Match Score
-            </TabsTrigger>
-            <TabsTrigger value="skill-gap">
-              <Target className="mr-2 h-4 w-4" />
-              Skill Gap
-            </TabsTrigger>
-            <TabsTrigger value="resume-report">
-              <FileText className="mr-2 h-4 w-4" />
-              Resume Report
-            </TabsTrigger>
-            <TabsTrigger value="suggestions">
-              <Lightbulb className="mr-2 h-4 w-4" />
-              Suggestions
-            </TabsTrigger>
-            <TabsTrigger value="simulation">
-              <TestTube2 className="mr-2 h-4 w-4" />
-              Simulation
-            </TabsTrigger>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <TabsTrigger value="match-score">
+                        <Gauge className="mr-2 h-4 w-4" />
+                        Match Score
+                    </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>How well your resume matches the job.</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <TabsTrigger value="skill-gap">
+                        <Target className="mr-2 h-4 w-4" />
+                        Skill Gap
+                    </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Skills you're missing and how to learn them.</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <TabsTrigger value="resume-report">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Resume Report
+                    </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>An analysis of your resume file for ATS issues.</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <TabsTrigger value="suggestions">
+                        <Lightbulb className="mr-2 h-4 w-4" />
+                        Suggestions
+                    </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>AI-powered ideas to improve your resume text.</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <TabsTrigger value="simulation">
+                        <TestTube2 className="mr-2 h-4 w-4" />
+                        Simulator
+                    </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Test changes to your resume and see the effect on your score.</TooltipContent>
+            </Tooltip>
           </TabsList>
 
           <TabsContent value="match-score" className="mt-4">
             {loading.isMatching ? (
-              <LoadingIndicator text="Calculating match score..." />
+              <LoadingIndicator text="Calculating your match score..." />
             ) : matchAnalysis ? (
               <div className="space-y-6">
                 <div className="flex flex-col items-center justify-center gap-4 rounded-lg bg-muted/50 p-6">
-                  <h3 className="font-headline text-lg font-semibold">
+                  <h3 className="font-headline text-lg font-semibold flex items-center gap-2">
                     Job-Resume Match Score
+                    <Tooltip>
+                        <TooltipTrigger asChild><HelpCircle className="w-4 h-4 text-muted-foreground cursor-pointer" /></TooltipTrigger>
+                        <TooltipContent><p className="max-w-xs">This score represents the alignment between your resume and the job description, based on skills, experience, and keywords.</p></TooltipContent>
+                    </Tooltip>
                   </h3>
                   <MatchScoreChart score={matchAnalysis.matchScore} />
                 </div>
@@ -221,12 +253,13 @@ export function ResultsPanel({
 
           <TabsContent value="skill-gap" className="mt-4">
             {loading.isAnalyzingGap ? (
-              <LoadingIndicator text="Analyzing skill gap and building roadmap..." />
+              <LoadingIndicator text="Analyzing skill gaps and building your roadmap..." />
             ) : skillGapAnalysis && skillGapAnalysis.skillAnalysis.length > 0 ? (
               <div className="space-y-4">
                 <h3 className="font-headline text-lg font-semibold">
-                  Skill Gap & Learning Roadmap
+                  Your Personalized Learning Roadmap
                 </h3>
+                <p className="text-sm text-muted-foreground">The AI has identified key skills from the job description that are missing from your resume. Here is a plan to learn them.</p>
                 <Accordion type="multiple" className="w-full">
                   {skillGapAnalysis.skillAnalysis.map((skill, index) => (
                     <AccordionItem value={`skill-${index}`} key={skill.skill}>
@@ -238,10 +271,10 @@ export function ResultsPanel({
                       </AccordionTrigger>
                       <AccordionContent className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                          <strong>Importance:</strong> {skill.importance}
+                          <strong>Why it's important:</strong> {skill.importance}
                         </p>
                         <div className="space-y-3">
-                          <h5 className="font-semibold">Learning Steps:</h5>
+                          <h5 className="font-semibold">Your Learning Steps:</h5>
                           {skill.learningSteps.map((step, stepIndex) => (
                             <div
                               key={stepIndex}
@@ -249,7 +282,7 @@ export function ResultsPanel({
                             >
                               <p className="font-medium">{step.step}</p>
                               <p className="text-xs text-muted-foreground italic">
-                                Practice: {step.practiceIdeas}
+                                How to practice: {step.practiceIdeas}
                               </p>
                             </div>
                           ))}
@@ -261,15 +294,15 @@ export function ResultsPanel({
                 <div className="text-center pt-4">
                   <Button>
                     <Rocket className="mr-2 h-4 w-4" />
-                    Start Learning Plan
+                    Launch My Learning Plan
                   </Button>
                 </div>
               </div>
             ) : (
               <p className="text-center text-sm text-muted-foreground p-8">
                 { !loading.isMatching && matchAnalysis && matchAnalysis.missingSkills.length === 0 
-                  ? "No significant skill gaps found. Great job!"
-                  : "Provide a job description and resume to identify skill gaps."
+                  ? "No significant skill gaps found. Your resume aligns well with the job requirements!"
+                  : "Enter a job description and resume to find skill gaps."
                 }
               </p>
             )}
@@ -277,15 +310,21 @@ export function ResultsPanel({
 
           <TabsContent value="resume-report" className="mt-4">
             {loading.isParsing ? (
-              <LoadingIndicator text="Parsing your resume..." />
+              <LoadingIndicator text="Scanning your resume file..." />
             ) : resumeAnalysis ? (
               <Accordion type="single" collapsible defaultValue="ats-blockers">
                 <AccordionItem value="ats-blockers">
                   <AccordionTrigger className="text-md font-semibold font-headline">
-                    <AlertTriangle className="mr-2 text-destructive" />
-                    ATS Blockers
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="mr-2 text-destructive" />
+                        ATS Compatibility Check
+                         <Tooltip>
+                            <TooltipTrigger asChild><HelpCircle className="w-4 h-4 text-muted-foreground cursor-pointer" /></TooltipTrigger>
+                            <TooltipContent><p className="max-w-xs">Applicant Tracking Systems (ATS) are automated systems recruiters use to scan resumes. This check looks for common formatting issues that can cause your resume to be misread or rejected.</p></TooltipContent>
+                        </Tooltip>
+                    </div>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="whitespace-pre-wrap">
                     {resumeAnalysis.ats_blockers}
                   </AccordionContent>
                 </AccordionItem>
@@ -309,41 +348,41 @@ export function ResultsPanel({
                     <User className="mr-2 text-primary" />
                     Experience Summary
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="whitespace-pre-wrap">
                     {resumeAnalysis.experience}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="education">
                   <AccordionTrigger className="text-md font-semibold font-headline">
                     <List className="mr-2 text-primary" />
-                    Education
+                    Education Summary
                   </AccordionTrigger>
-                  <AccordionContent>{resumeAnalysis.education}</AccordionContent>
+                  <AccordionContent className="whitespace-pre-wrap">{resumeAnalysis.education}</AccordionContent>
                 </AccordionItem>
               </Accordion>
             ) : (
               <p className="text-center text-sm text-muted-foreground p-8">
-                Upload a resume file to generate a report.
+                Upload a resume file to generate an ATS compatibility report.
               </p>
             )}
           </TabsContent>
 
           <TabsContent value="suggestions" className="mt-4">
             {loading.isSuggesting ? (
-              <LoadingIndicator text="Generating optimization suggestions..." />
+              <LoadingIndicator text="Generating AI optimization ideas..." />
             ) : suggestions ? (
               <div>
                 <h4 className="font-headline text-md font-semibold mb-2">
-                  Resume Optimization Suggestions
+                  AI-Powered Suggestions
                 </h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                 <p className="text-sm text-muted-foreground mb-4">Here are some ideas for how to rewrite parts of your resume to better match the job description. Use these as inspiration!</p>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/50 p-4 rounded-md">
                   {suggestions.suggestions}
-                </p>
+                </div>
               </div>
             ) : (
               <p className="text-center text-sm text-muted-foreground p-8">
-                Provide a job description and resume text to get optimization
-                suggestions.
+                Provide a job description and resume text to get AI suggestions.
               </p>
             )}
           </TabsContent>
@@ -357,6 +396,7 @@ export function ResultsPanel({
               />
           </TabsContent>
         </Tabs>
+        </TooltipProvider>
       </CardContent>
     </Card>
   );
