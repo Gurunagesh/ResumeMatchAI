@@ -5,21 +5,24 @@ import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
 import { InputPanel } from '@/components/input-panel';
 import { ResultsPanel } from '@/components/results-panel';
-import type { AnalysisResults, MatchAnalysis } from '@/lib/types';
+import type { AnalysisResults, MatchAnalysis, Resume } from '@/lib/types';
 import { parseResumeContent } from '@/ai/flows/parse-resume-content';
 import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-score';
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
 import { Stepper } from '@/components/stepper';
-import { useFirestore, useUser, useAuth } from '@/firebase';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection } from 'firebase/firestore';
+import { useFirestore, useUser, useAuth, useCollection, useMemoFirebase } from '@/firebase';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc } from 'firebase/firestore';
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
+import { v4 as uuidv4 } from 'uuid';
+
 
 export default function Home() {
   const [jobDescription, setJobDescription] = useState<string>('');
   const [resumeText, setResumeText] = useState<string>('');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [results, setResults] = useState<AnalysisResults>({
     resumeAnalysis: null,
     matchAnalysis: null,
@@ -35,11 +38,62 @@ export default function Home() {
   const { user } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
+  
+  const resumesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, `users/${user.uid}/resumes`);
+  }, [user, firestore]);
+  const { data: savedResumes, isLoading: isLoadingResumes } = useCollection<Resume>(resumesQuery);
 
   useEffect(() => {
     // This effect can be used for any initial setup if needed,
     // but anonymous sign-in is now handled via the login dialog.
   }, [auth]);
+
+  const handleSelectResume = (resumeId: string) => {
+    const resume = savedResumes?.find(r => r.id === resumeId);
+    if (resume) {
+      setResumeText(resume.content);
+      setSelectedResumeId(resume.id);
+      setResumeFile(null);
+    }
+  };
+
+  const handleSaveResume = async (title: string) => {
+    if (!user || !firestore || user.isAnonymous) {
+      toast({ title: 'Sign up to save resumes', variant: 'destructive' });
+      return;
+    }
+    if (!resumeText) {
+      toast({ title: 'No resume text to save', variant: 'destructive' });
+      return;
+    }
+
+    const resumeId = selectedResumeId || uuidv4();
+    const resumeRef = doc(firestore, `users/${user.uid}/resumes`, resumeId);
+    const resumeData: Resume = {
+      id: resumeId,
+      userId: user.uid,
+      title,
+      content: resumeText,
+      uploadDate: new Date().toISOString(),
+    };
+
+    setDocumentNonBlocking(resumeRef, resumeData, { merge: true });
+    toast({ title: `Resume "${title}" saved!` });
+    setSelectedResumeId(resumeId);
+  };
+  
+  const handleDeleteResume = (resumeId: string) => {
+    if (!user || !firestore) return;
+    const resumeRef = doc(firestore, `users/${user.uid}/resumes`, resumeId);
+    deleteDocumentNonBlocking(resumeRef);
+    toast({ title: 'Resume deleted' });
+    if (selectedResumeId === resumeId) {
+      setResumeText('');
+      setSelectedResumeId(null);
+    }
+  };
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,6 +110,7 @@ export default function Home() {
       }
       setResumeFile(file);
       setResumeText(''); // Clear text area when file is selected
+      setSelectedResumeId(null);
     }
   };
 
@@ -88,7 +143,7 @@ export default function Home() {
     
     if (!user && auth) {
       try {
-        await initiateEmailSignUp(auth); // Await the anonymous sign-in
+        await initiateEmailSignUp(auth, '', ''); // Pass empty credentials to trigger anonymous sign-in logic if not logged in.
       } catch (error) {
         toast({
           title: 'Initialization Failed',
@@ -111,10 +166,15 @@ export default function Home() {
     setLoadingText('Starting analysis...');
 
     try {
-      const textForAnalysis = resumeText || "Resume content from uploaded file.";
-      let currentResumeText = resumeText;
+      let textForAnalysis = resumeText;
 
-
+      // Use file content for analysis if a file is uploaded, otherwise use text area
+      if (resumeFile) {
+        textForAnalysis = `Resume content from uploaded file: ${resumeFile.name}`;
+      } else if (!textForAnalysis && savedResumes && savedResumes.length > 0) {
+        textForAnalysis = savedResumes[0].content; // Fallback to first saved resume
+      }
+      
       // Step 1: Parse Resume from file (if provided)
       if (resumeFile) {
         setLoadingText('Scanning your resume for ATS issues...');
@@ -270,6 +330,7 @@ export default function Home() {
         status: 'Analyzed',
         jobDescription,
         resumeContent: resumeText || "Uploaded resume",
+        resumeId: selectedResumeId,
         matchScore: results.matchAnalysis.matchScore,
         relevanceHighlights: results.matchAnalysis.relevanceHighlights,
         missingSkills: results.matchAnalysis.missingSkills,
@@ -279,7 +340,7 @@ export default function Home() {
       };
 
       const applicationsRef = collection(firestore, `users/${user.uid}/job_applications`);
-      await addDocumentNonBlocking(applicationsRef, jobApplicationData);
+      addDocumentNonBlocking(applicationsRef, jobApplicationData);
 
       toast({
         title: 'Analysis Saved!',
@@ -323,6 +384,12 @@ export default function Home() {
               isAnalyzing={isAnalyzing}
               fileName={resumeFile?.name}
               resumeFile={resumeFile}
+              savedResumes={savedResumes || []}
+              isLoadingResumes={isLoadingResumes}
+              selectedResumeId={selectedResumeId}
+              onSelectResume={handleSelectResume}
+              onSaveResume={handleSaveResume}
+              onDeleteResume={handleDeleteResume}
             />
             <ResultsPanel 
               loadingText={loadingText}

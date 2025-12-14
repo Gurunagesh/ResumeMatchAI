@@ -18,3 +18,11 @@ export type AnalysisResults = {
   suggestions: Suggestions | null;
   skillGapAnalysis: SkillGapAnalysis | null;
 };
+
+export interface Resume {
+    id: string;
+    userId: string;
+    title: string;
+    content: string;
+    uploadDate: string;
+}
