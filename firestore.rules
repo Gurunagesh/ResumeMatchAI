@@ -30,6 +30,13 @@ service cloud.firestore {
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
       allow update, delete: if isOwner(userId) && resource.data.userId == userId;
     }
+
+    // Users can only interact with their own resumes.
+    match /users/{userId}/resumes/{resumeId} {
+      allow list, get: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update, delete: if isOwner(userId);
+    }
     
     // Any authenticated user can submit feedback. They cannot read, update, or delete feedback.
     match /feedback/{feedbackId} {
