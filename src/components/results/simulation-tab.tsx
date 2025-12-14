@@ -48,8 +48,7 @@ export function SimulationTab({
       <div className="text-center text-sm text-muted-foreground p-8 border-2 border-dashed rounded-lg min-h-[400px] flex flex-col justify-center items-center gap-4">
         <TestTube2 className="h-8 w-8 text-muted-foreground" />
         <p className="max-w-xs">
-          Run an analysis with pasted resume text first to unlock the "What-If"
-          simulator.
+          Run an analysis first to unlock the "What-If" simulator.
         </p>
       </div>
     );

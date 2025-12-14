@@ -13,7 +13,7 @@ import { ResultsPanel } from '@/components/results-panel';
 import { generateInsights } from '@/ai/flows/generate-insights';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, BrainCircuit, Calendar, ChevronDown, Edit, FileText, Lightbulb, Save, Trash2, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BrainCircuit } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ApplicationDetailPage() {
@@ -128,10 +128,13 @@ export default function ApplicationDetailPage() {
                 loadingText={null}
                 isSimulating={false}
                 isSaving={false}
+                isGenerating={false}
                 originalResumeText={application.resumeContent}
                 handleSimulate={() => {}}
                 simulationResult={null}
                 handleSaveAnalysis={() => {}}
+                handleGenerate={() => {}}
+                generationResult={null}
                 isSavedView={true}
              />
         </div>

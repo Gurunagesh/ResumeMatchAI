@@ -5,11 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
 import { InputPanel } from '@/components/input-panel';
 import { ResultsPanel } from '@/components/results-panel';
-import type { AnalysisResults, MatchAnalysis, Resume } from '@/lib/types';
+import type { AnalysisResults, MatchAnalysis, Resume, GeneratedResumeResult, OptimizationMode } from '@/lib/types';
 import { parseResumeContent } from '@/ai/flows/parse-resume-content';
 import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-score';
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
+import { generateJDAlignedResume } from '@/ai/flows/generate-jd-aligned-resume';
 import { Stepper } from '@/components/stepper';
 import { useFirestore, useUser, useAuth, useCollection, useMemoFirebase } from '@/firebase';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -30,8 +31,10 @@ export default function Home() {
     skillGapAnalysis: null,
   });
   const [simulationResult, setSimulationResult] = useState<MatchAnalysis | null>(null);
+  const [generationResult, setGenerationResult] = useState<GeneratedResumeResult | null>(null);
   const [loadingText, setLoadingText] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const { toast } = useToast();
@@ -59,23 +62,24 @@ export default function Home() {
     }
   };
 
-  const handleSaveResume = async (title: string) => {
+  const handleSaveResume = async (title: string, content?: string) => {
     if (!user || !firestore || user.isAnonymous) {
       toast({ title: 'Sign up to save resumes', variant: 'destructive' });
       return;
     }
-    if (!resumeText) {
+    const textToSave = content || resumeText;
+    if (!textToSave) {
       toast({ title: 'No resume text to save', variant: 'destructive' });
       return;
     }
 
-    const resumeId = selectedResumeId || uuidv4();
+    const resumeId = uuidv4();
     const resumeRef = doc(firestore, `users/${user.uid}/resumes`, resumeId);
     const resumeData: Resume = {
       id: resumeId,
       userId: user.uid,
       title,
-      content: resumeText,
+      content: textToSave,
       uploadDate: new Date().toISOString(),
     };
 
@@ -163,6 +167,7 @@ export default function Home() {
       skillGapAnalysis: null,
     });
     setSimulationResult(null);
+    setGenerationResult(null);
     setLoadingText('Starting analysis...');
 
     try {
@@ -291,6 +296,47 @@ export default function Home() {
     }
   };
 
+  const handleGenerate = async (optimizationMode: OptimizationMode) => {
+    if (!jobDescription || !resumeText || !results.matchAnalysis) {
+      toast({
+        title: 'Missing Information',
+        description: 'A job description, resume, and initial analysis are required to generate a new version.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsGenerating(true);
+    setGenerationResult(null);
+
+    try {
+      const { generationResult, newMatchAnalysis } = await generateJDAlignedResume({
+        originalResumeText: resumeText,
+        jobDescription,
+        matchAnalysis: {
+          missingSkills: results.matchAnalysis.missingSkills,
+          relevanceHighlights: results.matchAnalysis.relevanceHighlights,
+        },
+        optimizationMode,
+      });
+
+      setGenerationResult({
+        ...generationResult,
+        ...newMatchAnalysis,
+      });
+
+    } catch (e) {
+      console.error('Error during generation:', e);
+      toast({
+        title: 'Generation Error',
+        description: 'Could not generate an aligned resume. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+
   const handleSaveAnalysis = async () => {
     if (!user || !firestore) {
       toast({
@@ -395,11 +441,14 @@ export default function Home() {
               loadingText={loadingText}
               isSimulating={isSimulating}
               isSaving={isSaving} 
+              isGenerating={isGenerating}
               results={results} 
               originalResumeText={resumeText}
               handleSimulate={handleSimulate}
               simulationResult={simulationResult}
               handleSaveAnalysis={handleSaveAnalysis}
+              handleGenerate={handleGenerate}
+              generationResult={generationResult}
             />
           </div>
         </div>

@@ -27,9 +27,10 @@ import {
   ClipboardList,
   Save,
   HelpCircle,
+  Wand2,
 } from 'lucide-react';
 import { Spinner } from './ui/spinner';
-import type { AnalysisResults, MatchAnalysis } from '@/lib/types';
+import type { AnalysisResults, MatchAnalysis, GeneratedResumeResult } from '@/lib/types';
 import { useUser } from '@/firebase';
 import { LoadingIndicator } from './results/loading-indicator';
 import { ResultsEmptyState } from './results/results-empty-state';
@@ -38,16 +39,20 @@ import { SkillGapTab } from './results/skill-gap-tab';
 import { ResumeReportTab } from './results/resume-report-tab';
 import { SuggestionsTab } from './results/suggestions-tab';
 import { SimulationTab } from './results/simulation-tab';
+import { GenerateResumeTab } from './results/generate-resume-tab';
 
 type ResultsPanelProps = {
   loadingText: string | null;
   isSimulating: boolean;
   isSaving: boolean;
+  isGenerating: boolean;
   results: AnalysisResults;
   originalResumeText: string;
   handleSimulate: (modifiedResume: string) => void;
   simulationResult: MatchAnalysis | null;
   handleSaveAnalysis: () => void;
+  handleGenerate: (mode: 'Conservative' | 'Balanced' | 'Aggressive') => void;
+  generationResult: GeneratedResumeResult | null;
   isSavedView?: boolean;
 };
 
@@ -55,11 +60,14 @@ export function ResultsPanel({
   loadingText,
   isSimulating,
   isSaving,
+  isGenerating,
   results,
   originalResumeText,
   handleSimulate,
   simulationResult,
   handleSaveAnalysis,
+  handleGenerate,
+  generationResult,
   isSavedView = false,
 }: ResultsPanelProps) {
   const { resumeAnalysis, matchAnalysis, suggestions, skillGapAnalysis } =
@@ -104,7 +112,7 @@ export function ResultsPanel({
                   variant="outline"
                   size="sm"
                   onClick={handleSaveAnalysis}
-                  disabled={isSaving || !user}
+                  disabled={isSaving || !user || user.isAnonymous}
                 >
                   {isSaving ? (
                     <Spinner className="mr-2 h-4 w-4" />
@@ -114,9 +122,9 @@ export function ResultsPanel({
                   Save Analysis
                 </Button>
               </TooltipTrigger>
-              {!user && (
+              {(!user || user.isAnonymous) && (
                 <TooltipContent>
-                  <p>Please log in or sign up to save your analysis.</p>
+                  <p>Please sign up to save your analysis.</p>
                 </TooltipContent>
               )}
             </Tooltip>
@@ -128,6 +136,17 @@ export function ResultsPanel({
           <Tabs defaultValue="match-score" className="min-h-[400px]">
             <TabsList className="grid w-full grid-cols-5">
               <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="generate" disabled={!matchAnalysis || isSavedView}>
+                    <Wand2 className="mr-1.5 h-4 w-4" />
+                    Generate
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Generate a new resume aligned with the job description.</p>
+                </TooltipContent>
+              </Tooltip>
+               <Tooltip>
                 <TooltipTrigger asChild>
                   <TabsTrigger value="match-score" disabled={!matchAnalysis}>
                     <Gauge className="mr-1.5 h-4 w-4" />
@@ -177,18 +196,18 @@ export function ResultsPanel({
                   <p>AI-powered ideas to improve your resume text.</p>
                 </TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="simulation" disabled={!matchAnalysis || isSavedView}>
-                    <TestTube2 className="mr-1.5 h-4 w-4" />
-                    Simulator
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Test changes and see the effect on your score.</p>
-                </TooltipContent>
-              </Tooltip>
             </TabsList>
+            
+            <TabsContent value="generate" className="mt-6">
+              <GenerateResumeTab
+                isSavedView={isSavedView}
+                matchAnalysis={matchAnalysis}
+                loading={isGenerating}
+                handleGenerate={handleGenerate}
+                generationResult={generationResult}
+                originalResumeText={originalResumeText}
+              />
+            </TabsContent>
 
             <TabsContent value="match-score" className="mt-6">
               <MatchScoreTab matchAnalysis={matchAnalysis} />
@@ -209,16 +228,6 @@ export function ResultsPanel({
               <SuggestionsTab suggestions={suggestions} />
             </TabsContent>
 
-            <TabsContent value="simulation" className="mt-6">
-              <SimulationTab
-                originalResumeText={originalResumeText}
-                handleSimulate={handleSimulate}
-                loading={isSimulating}
-                originalMatchScore={results.matchAnalysis?.matchScore}
-                simulationResult={simulationResult}
-                isSavedView={isSavedView}
-              />
-            </TabsContent>
           </Tabs>
         </TooltipProvider>
       </CardContent>
