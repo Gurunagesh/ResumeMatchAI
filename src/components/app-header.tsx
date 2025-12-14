@@ -1,6 +1,12 @@
 'use client';
 
-import { Briefcase, LogOut, User as UserIcon, BookMarked } from 'lucide-react';
+import {
+  Briefcase,
+  LogOut,
+  User as UserIcon,
+  BookMarked,
+  MessageSquarePlus,
+} from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Button } from './ui/button';
@@ -16,11 +22,13 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import Link from 'next/link';
+import { FeedbackDialog } from './feedback-dialog';
 
 export function AppHeader() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
 
   const handleLogout = async () => {
     if (auth) {
@@ -49,8 +57,12 @@ export function AppHeader() {
               <div className="h-8 w-20 animate-pulse rounded-md bg-muted" />
             ) : user ? (
               <>
+                 <Button variant="outline" size="sm" onClick={() => setIsFeedbackDialogOpen(true)}>
+                  <MessageSquarePlus className="mr-2 h-4 w-4" />
+                  Feedback
+                </Button>
                 {!user.isAnonymous && (
-                   <Button variant="outline" asChild>
+                  <Button variant="outline" asChild>
                     <Link href="/tracker">
                       <BookMarked className="mr-2 h-4 w-4" />
                       My Tracker
@@ -59,10 +71,18 @@ export function AppHeader() {
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Button
+                      variant="ghost"
+                      className="relative h-10 w-10 rounded-full"
+                    >
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={user.photoURL || ''} alt={user.email || ''} />
-                        <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
+                        <AvatarImage
+                          src={user.photoURL || ''}
+                          alt={user.email || ''}
+                        />
+                        <AvatarFallback>
+                          {getInitials(user.email)}
+                        </AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
@@ -74,7 +94,7 @@ export function AppHeader() {
                         </p>
                         {!user.isAnonymous && (
                           <p className="text-xs leading-none text-muted-foreground">
-                          Logged In
+                            Logged In
                           </p>
                         )}
                       </div>
@@ -97,6 +117,7 @@ export function AppHeader() {
         </div>
       </header>
       <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+      <FeedbackDialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
     </>
   );
 }
