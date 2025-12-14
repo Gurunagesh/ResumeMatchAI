@@ -11,9 +11,10 @@ import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
 import { Stepper } from '@/components/stepper';
-import { useFirestore, useUser, useAuth, initiateAnonymousSignIn } from '@/firebase';
+import { useFirestore, useUser, useAuth } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
+import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 
 export default function Home() {
   const [jobDescription, setJobDescription] = useState<string>('');
@@ -36,10 +37,10 @@ export default function Home() {
   const auth = useAuth();
 
   useEffect(() => {
-    if (auth && !auth.currentUser) {
-      initiateAnonymousSignIn(auth);
-    }
+    // This effect can be used for any initial setup if needed,
+    // but anonymous sign-in is now handled via the login dialog.
   }, [auth]);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -84,6 +85,20 @@ export default function Home() {
       });
       return;
     }
+    
+    if (!user && auth) {
+      try {
+        await initiateEmailSignUp(auth); // Await the anonymous sign-in
+      } catch (error) {
+        toast({
+          title: 'Initialization Failed',
+          description: 'Could not prepare for analysis. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
 
     // Reset previous results
     setResults({
@@ -97,6 +112,8 @@ export default function Home() {
 
     try {
       const textForAnalysis = resumeText || "Resume content from uploaded file.";
+      let currentResumeText = resumeText;
+
 
       // Step 1: Parse Resume from file (if provided)
       if (resumeFile) {
@@ -223,6 +240,15 @@ export default function Home() {
       });
       return;
     }
+     if (user.isAnonymous) {
+      toast({
+        title: 'Account Required',
+        description: 'Please sign up for a full account to save your analysis.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
 
     if (!results.matchAnalysis) {
       toast({

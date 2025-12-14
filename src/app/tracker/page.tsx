@@ -5,11 +5,11 @@ import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebas
 import { collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { BookMarked, Briefcase, Calendar, Building, Hash, BarChart } from 'lucide-react';
+import { BookMarked, Briefcase, Calendar, BarChart, Hash, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Link from 'next/link';
 
 export default function TrackerPage() {
   const { user, isUserLoading } = useUser();
@@ -65,33 +65,35 @@ export default function TrackerPage() {
     }
     
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {applications?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(app => (
-          <Card key={app.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="font-headline text-xl">{app.jobTitle}</CardTitle>
-                  <CardDescription>{app.company}</CardDescription>
+          <Link href={`/tracker/${app.id}`} key={app.id} className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
+            <Card className="cursor-pointer">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="font-headline text-xl">{app.jobTitle}</CardTitle>
+                    <CardDescription>{app.company}</CardDescription>
+                  </div>
+                  <Badge>{app.status}</Badge>
                 </div>
-                <Badge>{app.status}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                    <BarChart className="h-4 w-4 text-primary" />
-                    <strong>Match Score:</strong> <span className="font-bold text-primary">{app.matchScore}%</span>
-                </div>
-                 <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <strong>Saved:</strong> {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}
-                </div>
-                <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-muted-foreground" />
-                    <strong>Missing Skills:</strong> {app.missingSkills?.length || 0}
-                </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                      <BarChart className="h-4 w-4 text-primary" />
+                      <strong>Match Score:</strong> <span className="font-bold text-primary">{app.matchScore}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <strong>Saved:</strong> {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-muted-foreground" />
+                      <strong>Missing Skills:</strong> {app.missingSkills?.length || 0}
+                  </div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     );

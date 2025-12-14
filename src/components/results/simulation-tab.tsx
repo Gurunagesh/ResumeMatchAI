@@ -15,6 +15,7 @@ type SimulationTabProps = {
   loading: boolean;
   originalMatchScore?: number;
   simulationResult: MatchAnalysis | null;
+  isSavedView?: boolean;
 };
 
 export function SimulationTab({
@@ -23,12 +24,24 @@ export function SimulationTab({
   loading,
   originalMatchScore,
   simulationResult,
+  isSavedView,
 }: SimulationTabProps) {
   const [modifiedResume, setModifiedResume] = useState(originalResumeText);
 
   useEffect(() => {
     setModifiedResume(originalResumeText);
   }, [originalResumeText]);
+
+  if (isSavedView) {
+     return (
+      <div className="text-center text-sm text-muted-foreground p-8 border-2 border-dashed rounded-lg min-h-[400px] flex flex-col justify-center items-center gap-4">
+        <TestTube2 className="h-8 w-8 text-muted-foreground" />
+        <p className="max-w-xs">
+          The "What-If" simulator is disabled for saved analyses. Go to the main page to run a new simulation.
+        </p>
+      </div>
+    );
+  }
 
   if (originalMatchScore === undefined) {
     return (

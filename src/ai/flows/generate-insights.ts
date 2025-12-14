@@ -15,7 +15,7 @@ const GenerateInsightsInputSchema = z.object({
   resumeVersion: z.string().describe('The text of the resume version used.'),
   jobDescription: z.string().describe('The job description for the application.'),
   outcome: z
-    .enum(['Interview', 'Rejected', 'No Response'])
+    .enum(['Interviewing', 'Rejected', 'Offer', 'Applied', 'Analyzed'])
     .describe('The outcome of the application.'),
 });
 export type GenerateInsightsInput = z.infer<typeof GenerateInsightsInputSchema>;
@@ -63,7 +63,7 @@ In simple, non-technical language:
 2.  Identify the key negative factors (what didn't work).
 3.  Provide actionable recommendations for improvement.
 
-The analysis should be clear, user-friendly, and provide concrete advice.`,
+The analysis should be clear, user-friendly, and provide concrete advice. If the outcome is not 'Rejected' or 'Offer', you can state that full insights are best generated for terminal outcomes but provide some general observations.`,
     });
 
     const {output} = await prompt(input);

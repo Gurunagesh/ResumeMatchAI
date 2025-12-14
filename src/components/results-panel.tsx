@@ -47,6 +47,7 @@ type ResultsPanelProps = {
   handleSimulate: (modifiedResume: string) => void;
   simulationResult: MatchAnalysis | null;
   handleSaveAnalysis: () => void;
+  isSavedView?: boolean;
 };
 
 export function ResultsPanel({
@@ -58,6 +59,7 @@ export function ResultsPanel({
   handleSimulate,
   simulationResult,
   handleSaveAnalysis,
+  isSavedView = false,
 }: ResultsPanelProps) {
   const { resumeAnalysis, matchAnalysis, suggestions, skillGapAnalysis } =
     results;
@@ -93,7 +95,7 @@ export function ResultsPanel({
         <CardTitle className="font-headline text-xl tracking-tight">
           Analysis Results
         </CardTitle>
-        {matchAnalysis && (
+        {matchAnalysis && !isSavedView && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -173,7 +175,7 @@ export function ResultsPanel({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TabsTrigger value="simulation" disabled={!matchAnalysis}>
+                  <TabsTrigger value="simulation" disabled={!matchAnalysis || isSavedView}>
                     <TestTube2 className="mr-1.5 h-4 w-4" />
                     Simulator
                   </TabsTrigger>
@@ -210,6 +212,7 @@ export function ResultsPanel({
                 loading={isSimulating}
                 originalMatchScore={results.matchAnalysis?.matchScore}
                 simulationResult={simulationResult}
+                isSavedView={isSavedView}
               />
             </TabsContent>
           </Tabs>
