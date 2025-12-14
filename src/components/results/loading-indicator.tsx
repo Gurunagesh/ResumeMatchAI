@@ -8,3 +8,5 @@ export const LoadingIndicator = ({ text }: { text: string }) => (
     <p className="text-muted-foreground font-medium">{text}</p>
   </div>
 );
+
+    

@@ -34,3 +34,5 @@ export function SuggestionsTab({ suggestions }: SuggestionsTabProps) {
     </div>
   );
 }
+
+    

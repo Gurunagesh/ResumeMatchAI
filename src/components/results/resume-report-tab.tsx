@@ -103,3 +103,5 @@ export function ResumeReportTab({ resumeAnalysis }: ResumeReportTabProps) {
     </Accordion>
   );
 }
+
+    
