@@ -73,13 +73,29 @@ export function InputPanel({
     setSaveResumePopoverOpen(false);
   };
   
+  const getButtonText = () => {
+    if (isAnalyzing) return "Analyzing...";
+    if (isAnalyzeDisabled) return "Add job description & resume";
+    return "Run AI Analysis";
+  }
+
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-6">
         <Card className="shadow-sm transition-all duration-300 focus-within:shadow-primary/20 focus-within:ring-2 focus-within:ring-primary/50">
           <CardHeader>
-            <CardTitle className="font-headline text-lg tracking-tight">
+            <CardTitle className="font-headline text-lg tracking-tight flex items-center gap-2">
               Job Description
+              <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs text-center p-1">
+                      Paste the full job description for the most accurate analysis.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
             </CardTitle>
             <CardDescription>
               For best results, paste the full, detailed job description.
@@ -103,13 +119,25 @@ export function InputPanel({
              Your Resume
             </CardTitle>
             <CardDescription>
-              Manage your resume versions, or paste/upload a new one.
+              Reuse or compare previously optimized resumes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
              {/* Resume Version Management */}
             <div className="space-y-2">
-                <Label className="font-semibold text-gray-700">Resume Versions</Label>
+                <Label className="font-semibold text-gray-700 flex items-center gap-2">
+                  Resume Versions
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs text-center p-1">
+                        Save different versions of your resume to quickly reuse them for new analyses.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
                 <div className="flex gap-2">
                     <Popover>
                       <PopoverTrigger asChild>
@@ -257,16 +285,11 @@ export function InputPanel({
             className="w-full font-bold text-base py-6 shadow-lg transition-all duration-300 hover:shadow-primary/40 disabled:shadow-none disabled:cursor-not-allowed"
           >
             {isAnalyzing ? (
-              <>
-                <Spinner className="mr-2 h-5 w-5" />
-                Analyzing...
-              </>
+              <Spinner className="mr-2 h-5 w-5" />
             ) : (
-              <>
-                <Sparkles className="mr-2 h-5 w-5" />
-                Run AI Analysis
-              </>
+              <Sparkles className="mr-2 h-5 w-5" />
             )}
+            {getButtonText()}
           </Button>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" />
@@ -277,5 +300,3 @@ export function InputPanel({
     </TooltipProvider>
   );
 }
-
-    

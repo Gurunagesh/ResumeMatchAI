@@ -6,10 +6,12 @@ import {
   Gauge,
   Lightbulb,
   Target,
+  ShieldCheck,
+  Clock,
 } from 'lucide-react';
 
 export const ResultsEmptyState = () => (
-  <div className="flex flex-col items-center justify-center gap-6 rounded-lg border-2 border-dashed p-8 text-center min-h-[400px]">
+  <div className="flex flex-col items-center justify-center gap-6 rounded-lg border-2 border-dashed p-8 text-center min-h-[400px] h-full">
     <div className="p-4 bg-primary/10 rounded-full">
       <BrainCircuit className="h-10 w-10 text-primary" />
     </div>
@@ -40,7 +42,15 @@ export const ResultsEmptyState = () => (
         <span>AI Optimization Ideas</span>
       </div>
     </div>
+    <div className="mt-6 space-y-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 justify-center">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Resume data is processed securely and never stored without your permission.</span>
+        </div>
+        <div className="flex items-center gap-2 justify-center">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Analysis takes ~10-15 seconds to complete.</span>
+        </div>
+    </div>
   </div>
 );
-
-    

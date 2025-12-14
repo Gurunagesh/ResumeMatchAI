@@ -26,6 +26,7 @@ import {
   TestTube2,
   ClipboardList,
   Save,
+  HelpCircle,
 } from 'lucide-react';
 import { Spinner } from './ui/spinner';
 import type { AnalysisResults, MatchAnalysis } from '@/lib/types';
@@ -154,12 +155,15 @@ export function ResultsPanel({
                     value="resume-report"
                     disabled={!resumeAnalysis}
                   >
-                    <ClipboardList className="mr-1.5 h-4 w-4" />
-                    Resume Report
+                    <div className="flex items-center">
+                      <ClipboardList className="mr-1.5 h-4 w-4" />
+                      ATS Report
+                      <HelpCircle className="ml-1.5 h-3 w-3 text-muted-foreground" />
+                    </div>
                   </TabsTrigger>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>An analysis of your resume file for ATS issues.</p>
+                  <p className="max-w-xs">Analysis of your resume for Applicant Tracking System (ATS) compatibility. This requires a file upload.</p>
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -221,5 +225,3 @@ export function ResultsPanel({
     </Card>
   );
 }
-
-    
