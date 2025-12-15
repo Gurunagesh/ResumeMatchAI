@@ -72,5 +72,4 @@ export function Stepper({ currentStep }: StepperProps) {
     </nav>
   );
 }
-
     
