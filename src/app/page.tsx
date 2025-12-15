@@ -5,12 +5,13 @@ import { useToast } from '@/hooks/use-toast';
 import { AppHeader } from '@/components/app-header';
 import { InputPanel } from '@/components/input-panel';
 import { ResultsPanel } from '@/components/results-panel';
-import type { AnalysisResults, MatchAnalysis, Resume, GeneratedResumeResult, OptimizationMode } from '@/lib/types';
+import type { AnalysisResults, MatchAnalysis, Resume, GeneratedResumeResult, OptimizationMode, FreshResumeInput } from '@/lib/types';
 import { parseResumeContent } from '@/ai/flows/parse-resume-content';
 import { provideJobResumeMatchScore } from '@/ai/flows/provide-job-resume-match-score';
 import { generateResumeSuggestions } from '@/ai/flows/generate-resume-suggestions';
 import { generateSkillGapAnalysis } from '@/ai/flows/generate-skill-gap-analysis';
 import { generateJDAlignedResume } from '@/ai/flows/generate-jd-aligned-resume';
+import { generateFreshResume } from '@/ai/flows/generate-fresh-resume';
 import { Stepper } from '@/components/stepper';
 import { useFirestore, useUser, useAuth, useCollection, useMemoFirebase } from '@/firebase';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -18,6 +19,7 @@ import { collection, doc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { LandingPage } from '@/components/landing-page';
 import { Spinner } from '@/components/ui/spinner';
+import { FreshResumeDialog } from '@/components/fresh-resume-dialog';
 
 
 export default function Home() {
@@ -37,6 +39,7 @@ export default function Home() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFreshResumeDialogOpen, setIsFreshResumeDialogOpen] = useState(false);
 
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
@@ -60,7 +63,7 @@ export default function Home() {
 
   const handleSaveResume = async (title: string, content?: string) => {
     if (!user || !firestore || user.isAnonymous) {
-      toast({ title: 'Sign up to save resumes', variant: 'destructive' });
+      toast({ title: 'Sign up to save resumes', variant: 'destructive', description: "Please create a full account to save your work." });
       return;
     }
     const textToSave = content || resumeText;
@@ -80,7 +83,7 @@ export default function Home() {
     };
 
     setDocumentNonBlocking(resumeRef, resumeData, { merge: true });
-    toast({ title: `Resume "${title}" saved!` });
+    toast({ title: `Resume "${title}" saved!`, description: "You can now select it from the versions dropdown." });
     setSelectedResumeId(resumeId);
   };
   
@@ -254,8 +257,79 @@ export default function Home() {
       });
     } finally {
       setLoadingText(null); // All steps are done
+      toast({
+          title: 'Analysis Complete!',
+          description: 'Your results are ready below.',
+      });
     }
   };
+
+  const handleGenerateFreshResume = async (userInput: FreshResumeInput) => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign up or log in to generate a resume.',
+        variant: 'destructive',
+      });
+      return;
+    }
+     if (!jobDescription) {
+      toast({
+        title: 'Job Description Required',
+        description: 'Please provide a job description to generate a tailored resume.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationResult(null);
+    setLoadingText("Generating a fresh resume for you...");
+
+     try {
+      const { generatedResume, improvementSummary } = await generateFreshResume({
+        jobDescription,
+        userInput,
+      });
+
+      // To show improvement, we calculate the match score of the new resume
+      const newMatchAnalysis = await provideJobResumeMatchScore({
+        jobDescription,
+        resume: generatedResume,
+      });
+
+      setGenerationResult({
+        generatedResume,
+        improvementSummary,
+        matchScore: newMatchAnalysis.matchScore,
+      });
+
+      // Also update the main results to reflect this new analysis
+      setResults({
+        resumeAnalysis: null, // No file was parsed
+        matchAnalysis: newMatchAnalysis,
+        suggestions: null, // Can be generated in a next step if needed
+        skillGapAnalysis: null, // Can be generated in a next step if needed
+      });
+      setResumeText(generatedResume); // Populate the text area with the new resume
+      
+      toast({
+        title: 'New Resume Generated!',
+        description: 'Your new, job-aligned resume is ready and has been populated in the text area.',
+      });
+
+    } catch (e) {
+      console.error('Error generating fresh resume:', e);
+      toast({
+        title: 'Generation Error',
+        description: 'Could not generate a new resume. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+      setLoadingText(null);
+    }
+  }
   
   const handleSimulate = async (modifiedResume: string) => {
     if (!jobDescription || !modifiedResume) {
@@ -298,6 +372,7 @@ export default function Home() {
     }
     setIsGenerating(true);
     setGenerationResult(null);
+    setLoadingText("Optimizing your resume...");
 
     try {
       const { generationResult, newMatchAnalysis } = await generateJDAlignedResume({
@@ -314,6 +389,11 @@ export default function Home() {
         ...generationResult,
         ...newMatchAnalysis,
       });
+      
+      toast({
+        title: 'Resume Optimized!',
+        description: `Your new resume has a match score of ${newMatchAnalysis.matchScore}%.`,
+      });
 
     } catch (e) {
       console.error('Error during generation:', e);
@@ -324,6 +404,7 @@ export default function Home() {
       });
     } finally {
       setIsGenerating(false);
+      setLoadingText(null);
     }
   };
 
@@ -427,6 +508,7 @@ export default function Home() {
   }
 
   return (
+    <>
     <div className="flex flex-col min-h-screen bg-gray-50/50">
       <AppHeader />
       <main className="flex-1 p-4 sm:p-6 md:p-8">
@@ -440,6 +522,7 @@ export default function Home() {
               setResumeText={handleTextChange}
               handleFileChange={handleFileChange}
               handleAnalyze={handleAnalyze}
+              onStartFresh={() => setIsFreshResumeDialogOpen(true)}
               isAnalyzing={isAnalyzing}
               fileName={resumeFile?.name}
               resumeFile={resumeFile}
@@ -467,5 +550,13 @@ export default function Home() {
         </div>
       </main>
     </div>
+    <FreshResumeDialog 
+        open={isFreshResumeDialogOpen} 
+        onOpenChange={setIsFreshResumeDialogOpen}
+        onSubmit={handleGenerateFreshResume}
+        isLoading={isGenerating}
+        hasJobDescription={!!jobDescription}
+    />
+    </>
   );
 }

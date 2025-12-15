@@ -50,6 +50,23 @@ export type GenerateJDAlignedResumeOutput = z.infer<
   typeof GenerateJDAlignedResumeOutputSchema
 >;
 
+export const FreshResumeInputSchema = z.object({
+  fullName: z.string().min(1, 'Full name is required'),
+  targetRole: z.string().min(1, 'Target job role is required'),
+  skills: z.string().min(3, 'Please list at least 3 skills'),
+  education: z.string().min(1, 'Education is required'),
+  experience: z.string().optional(),
+  projects: z.string().optional(),
+  certifications: z.string().optional(),
+});
+export type FreshResumeInput = z.infer<typeof FreshResumeInputSchema>;
+
+export const GenerateFreshResumeInputSchema = z.object({
+  jobDescription: z.string().describe('The target job description.'),
+  userInput: FreshResumeInputSchema.describe('The user\'s raw career information.'),
+});
+export type GenerateFreshResumeInput = z.infer<typeof GenerateFreshResumeInputSchema>;
+
 
 export type AnalysisResults = {
   resumeAnalysis: ResumeAnalysis | null;

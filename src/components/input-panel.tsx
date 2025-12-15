@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Briefcase, FileText, Sparkles, HelpCircle, ShieldCheck, Trash2, Save, ChevronsUpDown, Check, PlusCircle } from 'lucide-react';
+import { Briefcase, FileText, Sparkles, HelpCircle, ShieldCheck, Trash2, Save, ChevronsUpDown, Check, PlusCircle, Wand2 } from 'lucide-react';
 import { Spinner } from './ui/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ import type { Resume } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from './ui/command';
 import { useState } from 'react';
+import { useUser } from '@/firebase';
 
 type InputPanelProps = {
   jobDescription: string;
@@ -29,6 +30,7 @@ type InputPanelProps = {
   setResumeText: (value: string) => void;
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleAnalyze: () => void;
+  onStartFresh: () => void;
   isAnalyzing: boolean;
   fileName?: string;
   resumeFile: BufferFile | null;
@@ -47,6 +49,7 @@ export function InputPanel({
   setResumeText,
   handleFileChange,
   handleAnalyze,
+  onStartFresh,
   isAnalyzing,
   fileName,
   resumeFile,
@@ -62,6 +65,7 @@ export function InputPanel({
   const isAnalyzeDisabled = !jobDescription || (!resumeText && !resumeFile);
   const [saveResumePopoverOpen, setSaveResumePopoverOpen] = useState(false);
   const [newResumeTitle, setNewResumeTitle] = useState('');
+  const { user } = useUser();
 
   const handleSaveClick = () => {
     if (!newResumeTitle.trim()) {
@@ -126,7 +130,7 @@ export function InputPanel({
              {/* Resume Version Management */}
             <div className="space-y-2">
                 <Label className="font-semibold text-gray-700 flex items-center gap-2">
-                  Resume Versions
+                  Resume Source
                   <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>
                       <HelpCircle className="h-4 w-4 text-muted-foreground cursor-pointer" />
@@ -138,18 +142,18 @@ export function InputPanel({
                     </TooltipContent>
                   </Tooltip>
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           role="combobox"
                           className="w-[200px] justify-between"
-                          disabled={isLoadingResumes}
+                          disabled={isLoadingResumes || !user || user.isAnonymous}
                         >
                           {isLoadingResumes ? <Spinner className="h-4 w-4" /> : selectedResumeId
                             ? savedResumes.find((r) => r.id === selectedResumeId)?.title
-                            : "Select resume..."}
+                            : "Select version..."}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -188,20 +192,20 @@ export function InputPanel({
 
                     <Popover open={saveResumePopoverOpen} onOpenChange={setSaveResumePopoverOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" disabled={!resumeText}>
-                                <Save className="mr-2 h-4 w-4" /> Save Version
+                            <Button variant="outline" disabled={!resumeText || !user || user.isAnonymous}>
+                                <Save className="mr-2 h-4 w-4" /> Save as Version
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-80">
                             <div className="grid gap-4">
                                 <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Save Resume</h4>
+                                    <h4 className="font-medium leading-none">Save Resume Version</h4>
                                     <p className="text-sm text-muted-foreground">
-                                    Give this resume version a name.
+                                    Give this version a name (e.g., "For SWE roles").
                                     </p>
                                 </div>
                                 <Input
-                                    placeholder="e.g., 'For SWE roles'"
+                                    placeholder="e.g., 'Optimized for Acme Inc'"
                                     value={newResumeTitle}
                                     onChange={(e) => setNewResumeTitle(e.target.value)}
                                 />
@@ -209,6 +213,9 @@ export function InputPanel({
                             </div>
                         </PopoverContent>
                     </Popover>
+                    <Button variant="outline" onClick={onStartFresh} disabled={!user}>
+                        <Wand2 className="mr-2 h-4 w-4" /> Start Fresh
+                    </Button>
                 </div>
             </div>
 
@@ -234,7 +241,7 @@ export function InputPanel({
                 className="min-h-[200px] text-sm"
                 value={resumeText}
                 onChange={e => setResumeText(e.target.value)}
-                disabled={!!resumeFile}
+                disabled={!!resumeFile || !user}
               />
             </div>
             
@@ -265,7 +272,7 @@ export function InputPanel({
                   onChange={handleFileChange}
                   accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   className="cursor-pointer file:text-primary file:font-semibold"
-                  disabled={!!resumeText}
+                  disabled={!!resumeText || !user}
                 />
               </div>
               {fileName && (
@@ -281,7 +288,7 @@ export function InputPanel({
           <Button
             size="lg"
             onClick={handleAnalyze}
-            disabled={isAnalyzeDisabled || isAnalyzing}
+            disabled={isAnalyzeDisabled || isAnalyzing || !user}
             className="w-full font-bold text-base py-6 shadow-lg transition-all duration-300 hover:shadow-primary/40 disabled:shadow-none disabled:cursor-not-allowed"
           >
             {isAnalyzing ? (
@@ -291,6 +298,9 @@ export function InputPanel({
             )}
             {getButtonText()}
           </Button>
+          {!user && (
+             <p className="text-sm text-destructive font-medium">Please log in to run an analysis.</p>
+          )}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" />
             <span>Your data is private and never shared.</span>
