@@ -6,6 +6,8 @@ import {
   EmailAuthProvider,
   linkWithCredential,
   User,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -46,4 +48,19 @@ export function initiateEmailSignIn(authInstance: Auth, email: string, password:
         // Re-throw the error so the calling component knows the sign-in failed.
         throw error;
     });
+}
+
+
+/** Initiate Google Sign-In with a popup. */
+export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
+  const provider = new GoogleAuthProvider();
+  try {
+    // This will open a popup for the user to sign in with their Google account.
+    await signInWithPopup(authInstance, provider);
+    // The onAuthStateChanged listener will handle the user state update upon success.
+  } catch (error: any) {
+    console.error("Google Sign-in error:", error);
+    // Re-throw the error so the calling component can handle it (e.g., show a toast).
+    throw error;
+  }
 }
