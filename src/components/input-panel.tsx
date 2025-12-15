@@ -216,7 +216,7 @@ export function InputPanel({
             
             <div>
               <Label htmlFor="resume-text" className="flex items-center gap-1.5 mb-2 font-semibold text-gray-700">
-                Resume Text
+                Paste Resume Text
                  <Tooltip delayDuration={0}>
                   <TooltipTrigger asChild>
                     <HelpCircle className="h-4 w-4 text-muted-foreground cursor-pointer" />

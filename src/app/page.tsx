@@ -15,8 +15,9 @@ import { Stepper } from '@/components/stepper';
 import { useFirestore, useUser, useAuth, useCollection, useMemoFirebase } from '@/firebase';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, doc } from 'firebase/firestore';
-import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { v4 as uuidv4 } from 'uuid';
+import { LandingPage } from '@/components/landing-page';
+import { Spinner } from '@/components/ui/spinner';
 
 
 export default function Home() {
@@ -38,7 +39,7 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
 
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
   
@@ -47,11 +48,6 @@ export default function Home() {
     return collection(firestore, `users/${user.uid}/resumes`);
   }, [user, firestore]);
   const { data: savedResumes, isLoading: isLoadingResumes } = useCollection<Resume>(resumesQuery);
-
-  useEffect(() => {
-    // This effect can be used for any initial setup if needed,
-    // but anonymous sign-in is now handled via the login dialog.
-  }, [auth]);
 
   const handleSelectResume = (resumeId: string) => {
     const resume = savedResumes?.find(r => r.id === resumeId);
@@ -135,6 +131,15 @@ export default function Home() {
     });
 
   const handleAnalyze = async () => {
+    if (!user) {
+       toast({
+        title: 'Authentication Required',
+        description: 'Please sign up or log in to run an analysis.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!jobDescription || (!resumeText && !resumeFile)) {
       toast({
         title: 'Missing Information',
@@ -144,20 +149,6 @@ export default function Home() {
       });
       return;
     }
-    
-    if (!user && auth) {
-      try {
-        await initiateEmailSignUp(auth, '', ''); // Pass empty credentials to trigger anonymous sign-in logic if not logged in.
-      } catch (error) {
-        toast({
-          title: 'Initialization Failed',
-          description: 'Could not prepare for analysis. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
-
 
     // Reset previous results
     setResults({
@@ -412,6 +403,28 @@ export default function Home() {
     if (isAnalyzing || Object.values(results).some(r => r !== null)) return 3;
     return 3;
   };
+  
+  if (isUserLoading) {
+    return (
+        <div className="flex flex-col min-h-screen bg-gray-50/50">
+            <AppHeader />
+            <div className="flex flex-1 justify-center items-center">
+                <Spinner className="h-10 w-10 text-primary" />
+            </div>
+        </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col min-h-screen bg-white">
+        <AppHeader />
+        <main className="flex-1">
+          <LandingPage />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50/50">
