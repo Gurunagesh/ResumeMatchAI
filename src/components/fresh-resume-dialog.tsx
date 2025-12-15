@@ -51,6 +51,7 @@ export function FreshResumeDialog({
       experience: '',
       projects: '',
       certifications: '',
+      achievements: '',
     },
   });
 
@@ -81,7 +82,7 @@ export function FreshResumeDialog({
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(handleFormSubmit)}
-              className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
+              className="space-y-4 max-h-[70vh] overflow-y-auto p-1"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField
@@ -189,7 +190,21 @@ export function FreshResumeDialog({
                   </FormItem>
                 )}
               />
-              <DialogFooter>
+
+              <FormField
+                control={form.control}
+                name="achievements"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Awards / Achievements (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Dean's List, Hackathon Winner" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="sticky bottom-0 bg-background pt-4">
                 <Button
                   type="submit"
                   className="w-full sm:w-auto"

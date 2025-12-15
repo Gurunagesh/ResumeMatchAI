@@ -58,6 +58,7 @@ export const FreshResumeInputSchema = z.object({
   experience: z.string().optional(),
   projects: z.string().optional(),
   certifications: z.string().optional(),
+  achievements: z.string().optional(),
 });
 export type FreshResumeInput = z.infer<typeof FreshResumeInputSchema>;
 
