@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Wand2, TestTube2, ArrowRight } from 'lucide-react';
+import { Wand2, ArrowRight, Save } from 'lucide-react';
 import { LoadingIndicator } from './loading-indicator';
 import { ResumeDiff } from './resume-diff';
 
@@ -17,6 +17,7 @@ type GenerateResumeTabProps = {
   handleGenerate: (mode: OptimizationMode) => void;
   generationResult: GeneratedResumeResult | null;
   originalResumeText: string;
+  onSaveGeneratedResume: (title: string, content: string) => void;
 };
 
 export function GenerateResumeTab({
@@ -26,6 +27,7 @@ export function GenerateResumeTab({
   handleGenerate,
   generationResult,
   originalResumeText,
+  onSaveGeneratedResume
 }: GenerateResumeTabProps) {
   const [optimizationMode, setOptimizationMode] =
     useState<OptimizationMode>('Balanced');
@@ -85,7 +87,8 @@ export function GenerateResumeTab({
 
         <ResumeDiff oldStr={originalResumeText} newStr={generationResult.generatedResume} />
         
-        <Button onClick={() => alert("Save functionality coming soon!")}>
+        <Button onClick={() => onSaveGeneratedResume(`Generated - ${new Date().toLocaleTimeString()}`, generationResult.generatedResume)}>
+            <Save className="mr-2 h-4 w-4" />
             Save as New Version
         </Button>
       </div>

@@ -23,7 +23,6 @@ import {
   Gauge,
   Target,
   Lightbulb,
-  TestTube2,
   ClipboardList,
   Save,
   HelpCircle,
@@ -38,7 +37,6 @@ import { MatchScoreTab } from './results/match-score-tab';
 import { SkillGapTab } from './results/skill-gap-tab';
 import { ResumeReportTab } from './results/resume-report-tab';
 import { SuggestionsTab } from './results/suggestions-tab';
-import { SimulationTab } from './results/simulation-tab';
 import { GenerateResumeTab } from './results/generate-resume-tab';
 
 type ResultsPanelProps = {
@@ -54,6 +52,7 @@ type ResultsPanelProps = {
   handleGenerate: (mode: 'Conservative' | 'Balanced' | 'Aggressive') => void;
   generationResult: GeneratedResumeResult | null;
   isSavedView?: boolean;
+  onSaveGeneratedResume: (title: string, content: string) => void;
 };
 
 export function ResultsPanel({
@@ -69,6 +68,7 @@ export function ResultsPanel({
   handleGenerate,
   generationResult,
   isSavedView = false,
+  onSaveGeneratedResume,
 }: ResultsPanelProps) {
   const { resumeAnalysis, matchAnalysis, suggestions, skillGapAnalysis } =
     results;
@@ -206,6 +206,7 @@ export function ResultsPanel({
                 handleGenerate={handleGenerate}
                 generationResult={generationResult}
                 originalResumeText={originalResumeText}
+                onSaveGeneratedResume={onSaveGeneratedResume}
               />
             </TabsContent>
 

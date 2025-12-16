@@ -136,6 +136,7 @@ export default function ApplicationDetailPage() {
                 handleGenerate={() => {}}
                 generationResult={null}
                 isSavedView={true}
+                onSaveGeneratedResume={() => {}}
              />
         </div>
         <div className="space-y-6">

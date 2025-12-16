@@ -72,7 +72,7 @@ export default function Home() {
       return;
     }
 
-    const resumeId = uuidv4();
+    const resumeId = selectedResumeId || uuidv4();
     const resumeRef = doc(firestore, `users/${user.uid}/resumes`, resumeId);
     const resumeData: Resume = {
       id: resumeId,
@@ -84,7 +84,10 @@ export default function Home() {
 
     setDocumentNonBlocking(resumeRef, resumeData, { merge: true });
     toast({ title: `Resume "${title}" saved!`, description: "You can now select it from the versions dropdown." });
-    setSelectedResumeId(resumeId);
+    
+    if (!selectedResumeId) {
+      setSelectedResumeId(resumeId);
+    }
   };
   
   const handleDeleteResume = (resumeId: string) => {
@@ -121,6 +124,7 @@ export default function Home() {
     setResumeText(value);
     if (value) {
       setResumeFile(null); // Clear file input when text is entered
+      setSelectedResumeId(null); // Deselect saved version when text is manually changed
     }
   };
 
@@ -166,12 +170,17 @@ export default function Home() {
 
     try {
       let textForAnalysis = resumeText;
+      let resumeSource = "text";
 
-      // Use file content for analysis if a file is uploaded, otherwise use text area
       if (resumeFile) {
         textForAnalysis = `Resume content from uploaded file: ${resumeFile.name}`;
-      } else if (!textForAnalysis && savedResumes && savedResumes.length > 0) {
-        textForAnalysis = savedResumes[0].content; // Fallback to first saved resume
+        resumeSource = "file";
+      } else if (!textForAnalysis && selectedResumeId) {
+        const selected = savedResumes?.find(r => r.id === selectedResumeId);
+        if (selected) {
+          textForAnalysis = selected.content;
+          resumeSource = "saved";
+        }
       }
       
       // Step 1: Parse Resume from file (if provided)
@@ -545,6 +554,7 @@ export default function Home() {
               handleSaveAnalysis={handleSaveAnalysis}
               handleGenerate={handleGenerate}
               generationResult={generationResult}
+              onSaveGeneratedResume={handleSaveResume}
             />
           </div>
         </div>
